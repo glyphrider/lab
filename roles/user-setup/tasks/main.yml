@@ -1,0 +1,19 @@
+---
+- name: Ensure user tools are installed
+  ansible.builtin.dnf:
+    name:
+      - tmux
+      - vim
+      - htop
+    state: present
+
+- name: Install dotfiles for {{ ansible_user }}
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "/home/{{ ansible_user }}/{{ item.dest }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  loop:
+    - { src: _tmux.conf, dest: .tmux.conf }
+    - { src: _vimrc,     dest: .vimrc     }

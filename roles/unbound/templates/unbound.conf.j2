@@ -1,0 +1,38 @@
+server:
+{% for iface in unbound_interfaces %}
+	interface: {{ iface }}
+{% endfor %}
+
+{% for ac in unbound_access_control %}
+	access-control: {{ ac.subnet }} {{ ac.action }}
+{% endfor %}
+
+{% for view in unbound_views %}
+{% for client in view.clients %}
+	access-control-view: {{ client }} {{ view.name }}
+{% endfor %}
+{% endfor %}
+
+	# Recursive resolution — queries root servers directly, no forwarder.
+	root-hints: "{{ unbound_root_hints_path }}"
+
+	hide-identity: yes
+	hide-version: yes
+
+	auto-trust-anchor-file: "/var/unbound/db/root.key"
+	val-log-level: 2
+	aggressive-nsec: yes
+
+{% for view in unbound_views %}
+view:
+	name: "{{ view.name }}"
+	local-zone: "{{ unbound_local_zone }}." static
+{% for record in view.records %}
+	local-data: "{{ record.name }}.{{ unbound_local_zone }}. IN A {{ record.ip }}"
+	local-data-ptr: "{{ record.ip }} {{ record.name }}.{{ unbound_local_zone }}"
+{% endfor %}
+
+{% endfor %}
+remote-control:
+	control-enable: yes
+	control-interface: /var/run/unbound.sock

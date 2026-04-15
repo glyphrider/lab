@@ -1,0 +1,135 @@
+---
+# ── Packages & service ────────────────────────────────────────────────────────
+
+- name: Install virtualization packages
+  ansible.builtin.dnf:
+    name: "{{ virtualization_packages }}"
+    state: present
+
+- name: Add ansible_user to libvirt group
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: libvirt
+    append: true
+
+- name: Enable and start libvirtd
+  ansible.builtin.systemd:
+    name: libvirtd
+    enabled: true
+    state: started
+
+# ── Storage pool ─────────────────────────────────────────────────────────────
+
+- name: Check if default storage pool exists
+  ansible.builtin.command: virsh pool-info default
+  register: _pool_info
+  failed_when: false
+  changed_when: false
+
+- name: Create and start default storage pool
+  ansible.builtin.shell: |
+    virsh pool-define-as default dir --target /var/lib/libvirt/images
+    virsh pool-build default
+    virsh pool-start default
+    virsh pool-autostart default
+  when: _pool_info.rc != 0
+
+# ── Terraform ─────────────────────────────────────────────────────────────────
+
+- name: Add HashiCorp repo
+  ansible.builtin.yum_repository:
+    name: hashicorp
+    description: HashiCorp Stable
+    baseurl: https://rpm.releases.hashicorp.com/fedora/$releasever/$basearch/stable
+    gpgkey: https://rpm.releases.hashicorp.com/gpg
+    gpgcheck: true
+    enabled: true
+
+- name: Install terraform
+  ansible.builtin.dnf:
+    name: terraform
+    state: present
+
+# ── VM provisioning ───────────────────────────────────────────────────────────
+
+- name: Generate SSH keypair for ansible_user on lab server
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    generate_ssh_key: true
+    ssh_key_type: ed25519
+    ssh_key_file: .ssh/id_ed25519
+
+- name: Read lab server public key
+  ansible.builtin.slurp:
+    src: "/home/{{ ansible_user }}/.ssh/id_ed25519.pub"
+  register: _lab_pubkey
+
+- name: Create terraform directory
+  ansible.builtin.file:
+    path: "{{ vm_terraform_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Read authorized_keys for ansible_user
+  ansible.builtin.slurp:
+    src: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+  register: _authorized_keys
+
+- name: Set SSH keys fact
+  ansible.builtin.set_fact:
+    _vm_ssh_keys: >-
+      {{ (_authorized_keys.content | b64decode).splitlines()
+         | reject('match', '^\\s*#')
+         | reject('equalto', '')
+         + [_lab_pubkey.content | b64decode | trim]
+         | list }}
+
+- name: Template terraform and cloud-init files
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ vm_terraform_dir }}/{{ item.dest }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  loop:
+    - { src: main.tf.j2,            dest: main.tf }
+    - { src: user-data.yml.j2,      dest: user-data.yml }
+    - { src: network-config.yml.j2, dest: network-config.yml }
+
+- name: Terraform init
+  ansible.builtin.command:
+    cmd: terraform init -upgrade
+    chdir: "{{ vm_terraform_dir }}"
+  become_user: "{{ ansible_user }}"
+  changed_when: false
+
+- name: Terraform apply
+  ansible.builtin.command:
+    cmd: terraform apply -auto-approve
+    chdir: "{{ vm_terraform_dir }}"
+  become_user: "{{ ansible_user }}"
+  register: _tf_apply
+  changed_when: "'No changes.' not in _tf_apply.stdout"
+
+- name: Wait for SSH to become available on VM
+  ansible.builtin.wait_for:
+    host: "{{ vm_ip }}"
+    port: 22
+    delay: 15
+    timeout: 300
+  when: _tf_apply.changed
+
+- name: Wait for cloud-init to complete
+  ansible.builtin.command: >
+    ssh -o StrictHostKeyChecking=accept-new
+        -o UserKnownHostsFile=/dev/null
+        -i /home/{{ ansible_user }}/.ssh/id_ed25519
+        {{ ansible_user }}@{{ vm_ip }}
+        cloud-init status --wait
+  become: false
+  changed_when: false
+  failed_when: _cloud_init.rc not in [0, 2]
+  register: _cloud_init
+  when: _tf_apply.changed

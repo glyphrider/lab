@@ -1,0 +1,63 @@
+terraform {
+  required_providers {
+    libvirt = {
+      source  = "dmacvicar/libvirt"
+      version = "= 0.7.6"
+    }
+  }
+}
+
+provider "libvirt" {
+  uri = "qemu:///system"
+}
+
+resource "libvirt_volume" "ubuntu_base" {
+  name   = "ubuntu-24.04-base.qcow2"
+  pool   = "default"
+  source = "{{ vm_ubuntu_image_url }}"
+  format = "qcow2"
+}
+
+resource "libvirt_volume" "{{ vm_name }}" {
+  name           = "{{ vm_name }}.qcow2"
+  pool           = "default"
+  base_volume_id = libvirt_volume.ubuntu_base.id
+  size           = {{ vm_disk_size }}
+  format         = "qcow2"
+}
+
+resource "libvirt_cloudinit_disk" "init" {
+  name           = "{{ vm_name }}-init.iso"
+  pool           = "default"
+  user_data      = file("${path.module}/user-data.yml")
+  network_config = file("${path.module}/network-config.yml")
+}
+
+resource "libvirt_domain" "{{ vm_name }}" {
+  name      = "{{ vm_name }}"
+  memory    = {{ vm_memory }}
+  vcpu      = {{ vm_vcpu }}
+  autostart = true
+
+  cloudinit = libvirt_cloudinit_disk.init.id
+
+  network_interface {
+    bridge = "{{ vm_network_bridge }}"
+  }
+
+  disk {
+    volume_id = libvirt_volume.{{ vm_name }}.id
+  }
+
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = "0"
+  }
+
+  graphics {
+    type        = "spice"
+    listen_type = "address"
+    autoport    = true
+  }
+}

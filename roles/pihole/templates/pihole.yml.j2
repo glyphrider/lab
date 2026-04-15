@@ -1,0 +1,36 @@
+services:
+{% for instance in pihole_instances %}
+  {{ instance.name }}:
+    container_name: {{ instance.name }}
+    image: docker.io/pihole/pihole
+    hostname: {{ instance.hostname }}
+    networks:
+      {{ instance.network }}:
+        ipv4_address: {{ instance.ip }}
+    dns:
+      - {{ instance.upstream }}
+    environment:
+      TZ: '{{ pihole_tz }}'
+      FTLCONF_webserver_domain: '{{ instance.domain }}'
+      FTLCONF_dns_upstreams: '{{ instance.upstream }}'
+    volumes:
+      - '{{ pihole_cert_dest }}:/etc/pihole/tls.pem'
+      - '{{ instance.name }}-etc:/etc/pihole'
+    cap_add:
+      - NET_ADMIN
+      - SYS_TIME
+      - SYS_NICE
+    restart: unless-stopped
+
+{% endfor %}
+volumes:
+{% for instance in pihole_instances %}
+  {{ instance.name }}-etc:
+    name: {{ instance.name }}-etc
+{% endfor %}
+
+networks:
+{% for network in pihole_instances | map(attribute='network') | unique %}
+  {{ network }}:
+    external: true
+{% endfor %}

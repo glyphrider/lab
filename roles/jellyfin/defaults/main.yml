@@ -1,0 +1,9 @@
+---
+jellyfin_ip:           10.47.2.6
+jellyfin_internal_ip:  172.16.1.2
+jellyfin_tz:           America/New_York
+jellyfin_compose_path: /var/lab/compose/jellyfin.yml
+jellyfin_domain:       jellyfin.marisol.home
+jellyfin_cert_dir:     /var/lab/certs
+jellyfin_nginx_conf:   /var/lab/conf/jellyfin-nginx.conf
+

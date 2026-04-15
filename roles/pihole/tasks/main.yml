@@ -1,0 +1,123 @@
+---
+# ── Certificate ───────────────────────────────────────────────────────────────
+
+- name: Create certificate directory
+  ansible.builtin.file:
+    path: "{{ pihole_cert_dest | dirname }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Assemble and deploy PiHole.pem
+  ansible.builtin.copy:
+    content: "{{ lookup('file', role_path + '/files/pihole.crt') }}\n{{ lookup('file', playbook_dir + '/files/marisol.crt') }}\n{{ lookup('file', role_path + '/files/pihole.key') }}\n"
+    dest: "{{ pihole_cert_dest }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+
+- name: Set SELinux file context policy for certificate
+  community.general.sefcontext:
+    target: "{{ pihole_cert_dest }}"
+    setype: container_file_t
+    state: present
+
+- name: Apply SELinux file context to certificate
+  ansible.builtin.command: restorecon -v {{ pihole_cert_dest }}
+  changed_when: false
+
+# ── Compose file ──────────────────────────────────────────────────────────────
+
+- name: Create compose directory
+  ansible.builtin.file:
+    path: "{{ pihole_compose_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy pihole.yml
+  ansible.builtin.template:
+    src: pihole.yml.j2
+    dest: "{{ pihole_compose_path }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  register: r_compose
+
+# ── Systemd service ───────────────────────────────────────────────────────────
+
+- name: Deploy pihole systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/pihole.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=PiHole Container Stack
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/usr/sbin/podman-compose -f {{ pihole_compose_path }} up -d
+      ExecStop=/usr/sbin/podman-compose -f {{ pihole_compose_path }} down
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Reload systemd
+
+- name: Enable and start pihole service
+  ansible.builtin.systemd:
+    name: pihole
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Restart pihole if compose file changed
+  ansible.builtin.systemd:
+    name: pihole
+    state: restarted
+  when: r_compose.changed
+
+# ── First-run password ────────────────────────────────────────────────────────
+
+- name: Check if pihole passwords have been initialized
+  ansible.builtin.stat:
+    path: "/var/lab/.{{ item.name }}-password-initialized"
+  loop: "{{ pihole_instances }}"
+  register: _password_checks
+
+- name: Set pihole web password on first run
+  ansible.builtin.command: podman exec {{ item.item.name }} pihole setpassword {{ pihole_password }}
+  loop: "{{ _password_checks.results }}"
+  when: not item.stat.exists
+
+- name: Mark pihole passwords as initialized
+  ansible.builtin.file:
+    path: "/var/lab/.{{ item.item.name }}-password-initialized"
+    state: touch
+    mode: '0600'
+  loop: "{{ _password_checks.results }}"
+  when: not item.stat.exists
+
+# ── Gravity update ───────────────────────────────────────────────────────────
+
+- name: Update pihole gravity
+  ansible.builtin.shell: podman exec {{ item.name }} pihole -g < /dev/null
+  loop: "{{ pihole_instances }}"
+  changed_when: false
+
+# ── Image updates ─────────────────────────────────────────────────────────────
+
+- name: Pull latest pihole image
+  ansible.builtin.command: podman pull docker.io/pihole/pihole
+  register: _pull
+  changed_when: "'Image is up to date' not in _pull.stdout"
+
+- name: Restart pihole if image updated
+  ansible.builtin.systemd:
+    name: pihole
+    state: restarted
+  when: _pull.changed

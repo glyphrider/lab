@@ -1,0 +1,219 @@
+---
+# ── Certificates ──────────────────────────────────────────────────────────────
+
+- name: Create certificate directory
+  ansible.builtin.file:
+    path: "{{ jellyfin_cert_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Copy jellyfin certificate and key
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ jellyfin_cert_dir }}/{{ item.dest }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+  loop:
+    - { src: jellyfin.crt, dest: jellyfin.crt }
+    - { src: jellyfin.key, dest: jellyfin.key }
+
+- name: Set SELinux file context policy for certificates
+  community.general.sefcontext:
+    target: "{{ jellyfin_cert_dir }}/{{ item }}"
+    setype: container_file_t
+    state: present
+  loop:
+    - jellyfin.crt
+    - jellyfin.key
+
+- name: Apply SELinux file context to certificates
+  ansible.builtin.command: restorecon -v {{ jellyfin_cert_dir }}/{{ item }}
+  changed_when: false
+  loop:
+    - jellyfin.crt
+    - jellyfin.key
+
+# ── Nginx config ──────────────────────────────────────────────────────────────
+
+- name: Create nginx config directory
+  ansible.builtin.file:
+    path: "{{ jellyfin_nginx_conf | dirname }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Deploy nginx config
+  ansible.builtin.copy:
+    dest: "{{ jellyfin_nginx_conf }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+    content: |
+      server {
+          listen 80;
+          server_name {{ jellyfin_domain }};
+          return 301 https://$host$request_uri;
+      }
+
+      server {
+          listen 443 ssl;
+          server_name {{ jellyfin_domain }};
+
+          ssl_certificate     /etc/nginx/ssl/jellyfin.crt;
+          ssl_certificate_key /etc/nginx/ssl/jellyfin.key;
+
+          add_header Strict-Transport-Security "max-age=31536000" always;
+
+          location / {
+              proxy_pass http://{{ jellyfin_internal_ip }}:8096;
+              proxy_set_header Host              $host;
+              proxy_set_header X-Real-IP         $remote_addr;
+              proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+
+              # WebSocket support
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade    $http_upgrade;
+              proxy_set_header Connection "upgrade";
+
+              proxy_read_timeout 600s;
+              proxy_send_timeout 600s;
+          }
+      }
+
+- name: Set SELinux file context policy for nginx config
+  community.general.sefcontext:
+    target: "{{ jellyfin_nginx_conf }}"
+    setype: container_file_t
+    state: present
+
+- name: Apply SELinux file context to nginx config
+  ansible.builtin.command: restorecon -v {{ jellyfin_nginx_conf }}
+  changed_when: false
+
+# ── Compose file ──────────────────────────────────────────────────────────────
+
+- name: Create compose directory
+  ansible.builtin.file:
+    path: "{{ jellyfin_compose_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy jellyfin.yml
+  ansible.builtin.copy:
+    dest: "{{ jellyfin_compose_path }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+    content: |
+      services:
+        nginx:
+          image: docker.io/nginx
+          container_name: jellyfin-nginx
+          depends_on:
+            - jellyfin
+          networks:
+            lab-marisol0-macvlan:
+              ipv4_address: {{ jellyfin_ip }}
+            jellyfin-internal:
+          volumes:
+            - '{{ jellyfin_cert_dir }}/jellyfin.crt:/etc/nginx/ssl/jellyfin.crt:ro'
+            - '{{ jellyfin_cert_dir }}/jellyfin.key:/etc/nginx/ssl/jellyfin.key:ro'
+            - '{{ jellyfin_nginx_conf }}:/etc/nginx/conf.d/jellyfin.conf:ro'
+          restart: unless-stopped
+
+        jellyfin:
+          image: docker.io/jellyfin/jellyfin
+          container_name: jellyfin
+          hostname: jellyfin
+          networks:
+            jellyfin-internal:
+              ipv4_address: {{ jellyfin_internal_ip }}
+          environment:
+            - TZ={{ jellyfin_tz }}
+          volumes:
+            - config:/config
+            - cache:/cache
+            - type: bind
+              source: /media
+              target: /media
+          devices:
+            - /dev/dri/renderD128:/dev/dri/renderD128
+          group_add:
+            - video
+          restart: unless-stopped
+
+      volumes:
+        config:
+          name: jellyfin-config
+        cache:
+          name: jellyfin-cache
+
+      networks:
+        lab-marisol0-macvlan:
+          external: true
+        jellyfin-internal:
+          name: jellyfin-internal
+          driver: bridge
+          internal: true
+          ipam:
+            config:
+              - subnet: 172.16.1.0/24
+  register: r_compose
+
+# ── Systemd service ───────────────────────────────────────────────────────────
+
+- name: Deploy jellyfin systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/jellyfin.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Jellyfin Media Server
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart=/usr/sbin/podman-compose -f {{ jellyfin_compose_path }} up -d
+      ExecStop=/usr/sbin/podman-compose -f {{ jellyfin_compose_path }} down
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Reload systemd
+
+- name: Enable and start jellyfin service
+  ansible.builtin.systemd:
+    name: jellyfin
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Restart jellyfin if compose file changed
+  ansible.builtin.systemd:
+    name: jellyfin
+    state: restarted
+  when: r_compose.changed
+
+# ── Image updates ─────────────────────────────────────────────────────────────
+
+- name: Pull latest jellyfin images
+  ansible.builtin.command: podman pull {{ item }}
+  loop:
+    - docker.io/jellyfin/jellyfin
+    - docker.io/library/nginx
+  register: _pulls
+  changed_when: "'Image is up to date' not in _pulls.stdout"
+
+- name: Restart jellyfin if any image updated
+  ansible.builtin.systemd:
+    name: jellyfin
+    state: restarted
+  when: _pulls.results | selectattr('changed') | list | length > 0

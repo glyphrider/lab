@@ -1,0 +1,241 @@
+---
+# Detect the physical ethernet interface robustly.
+#
+# On the first run ansible_default_ipv4.interface is the bare NIC (e.g.
+# ens3).  After a successful run and reboot it becomes 'management0' — the
+# bridge now owns the default route.  Reading the interface-name back from
+# the already-deployed port keyfile keeps subsequent runs idempotent.
+
+- name: Check whether management0-port keyfile already exists
+  ansible.builtin.stat:
+    path: "{{ nm_dir }}/management0-port.nmconnection"
+  register: _port_stat
+
+- name: Read physical interface name from existing port keyfile
+  ansible.builtin.slurp:
+    src: "{{ nm_dir }}/management0-port.nmconnection"
+  register: _port_content
+  when: _port_stat.stat.exists
+
+- name: Set eth_iface from existing keyfile (idempotent re-run)
+  ansible.builtin.set_fact:
+    eth_iface: >-
+      {{ (_port_content.content | b64decode
+          | regex_search('(?m)^interface-name=(\S+)', '\1'))[0] }}
+  when: _port_stat.stat.exists
+
+- name: Set eth_iface from Ansible facts (first run)
+  ansible.builtin.set_fact:
+    eth_iface: "{{ ansible_default_ipv4.interface }}"
+  when: not _port_stat.stat.exists
+
+# ── Prereqs ───────────────────────────────────────────────────────────────
+
+- name: Ensure NetworkManager is installed
+  ansible.builtin.dnf:
+    name: NetworkManager
+    state: present
+
+- name: Ensure NetworkManager is enabled and running
+  ansible.builtin.systemd:
+    name: NetworkManager
+    state: started
+    enabled: true
+
+# ── NetworkManager keyfiles ───────────────────────────────────────────────
+
+- name: Write management0 bridge keyfile
+  ansible.builtin.copy:
+    dest: "{{ nm_dir }}/management0.nmconnection"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      [connection]
+      id=management0
+      uuid={{ uuid_mgmt0 }}
+      type=bridge
+      interface-name={{ mgmt_bridge }}
+      autoconnect=yes
+
+      [bridge]
+      stp=false
+
+      [ipv4]
+      method=manual
+      address1={{ mgmt_ip }}/{{ mgmt_prefix }},{{ mgmt_gw }}
+      dns={{ mgmt_dns }};
+
+      [ipv6]
+      method=disabled
+      addr-gen-mode=stable-privacy
+  register: r_mgmt0
+
+- name: Write ethernet port keyfile (slave of management0)
+  ansible.builtin.copy:
+    dest: "{{ nm_dir }}/management0-port.nmconnection"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      [connection]
+      id=management0-port
+      uuid={{ uuid_port }}
+      type=ethernet
+      interface-name={{ eth_iface }}
+      master={{ mgmt_bridge }}
+      slave-type=bridge
+      autoconnect=yes
+
+      [ethernet]
+  register: r_port
+
+- name: Write vlan2 keyfile (VLAN id=2 on management0, slave of marisol0)
+  ansible.builtin.copy:
+    dest: "{{ nm_dir }}/vlan2.nmconnection"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      [connection]
+      id={{ vlan_iface }}
+      uuid={{ uuid_vlan2 }}
+      type=vlan
+      interface-name={{ vlan_iface }}
+      master={{ marisol_bridge }}
+      slave-type=bridge
+      autoconnect=yes
+
+      [vlan]
+      flags=1
+      id={{ vlan_id }}
+      parent={{ mgmt_bridge }}
+  register: r_vlan2
+
+- name: Write vlan3 keyfile (VLAN id=3 on management0, slave of iot0)
+  ansible.builtin.copy:
+    dest: "{{ nm_dir }}/vlan3.nmconnection"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      [connection]
+      id={{ iot_vlan_iface }}
+      uuid={{ uuid_vlan3 }}
+      type=vlan
+      interface-name={{ iot_vlan_iface }}
+      master={{ iot_bridge }}
+      slave-type=bridge
+      autoconnect=yes
+
+      [vlan]
+      flags=1
+      id={{ iot_vlan_id }}
+      parent={{ mgmt_bridge }}
+  register: r_vlan3
+
+- name: Write iot0 bridge keyfile
+  ansible.builtin.copy:
+    dest: "{{ nm_dir }}/iot0.nmconnection"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      [connection]
+      id={{ iot_bridge }}
+      uuid={{ uuid_iot0 }}
+      type=bridge
+      interface-name={{ iot_bridge }}
+      autoconnect=yes
+
+      [bridge]
+      stp=false
+
+      [ipv4]
+      method=manual
+      address1={{ iot_ip }}/{{ iot_prefix }}
+      dns={{ iot_dns }};
+      never-default=true
+
+      [ipv6]
+      method=disabled
+      addr-gen-mode=stable-privacy
+  register: r_iot0
+
+- name: Write marisol0 bridge keyfile
+  ansible.builtin.copy:
+    dest: "{{ nm_dir }}/marisol0.nmconnection"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      [connection]
+      id={{ marisol_bridge }}
+      uuid={{ uuid_marisol0 }}
+      type=bridge
+      interface-name={{ marisol_bridge }}
+      autoconnect=yes
+
+      [bridge]
+      stp=false
+
+      [ipv4]
+      method=manual
+      address1={{ marisol_ip }}/{{ marisol_prefix }}
+      dns={{ marisol_dns }};
+      never-default=true
+
+      [ipv6]
+      method=disabled
+      addr-gen-mode=stable-privacy
+  register: r_marisol0
+
+# ── Remove conflicting connections ────────────────────────────────────────
+# Any pre-existing keyfile that directly claims the physical ethernet
+# interface (other than our port file) will fight with the bridge on reboot.
+
+- name: Find all existing NM keyfiles
+  ansible.builtin.find:
+    paths: "{{ nm_dir }}"
+    patterns: "*.nmconnection"
+  register: _all_nm_files
+
+- name: Check each keyfile for a direct claim on {{ eth_iface }}
+  ansible.builtin.command:
+    cmd: grep -q "interface-name={{ eth_iface }}" "{{ item.path }}"
+  loop: "{{ _all_nm_files.files }}"
+  register: _grep_results
+  changed_when: false
+  failed_when: false
+
+- name: Remove conflicting keyfiles (preserving our port file)
+  ansible.builtin.file:
+    path: "{{ item.item.path }}"
+    state: absent
+  loop: "{{ _grep_results.results }}"
+  when:
+    - item.rc == 0
+    - item.item.path != nm_dir + '/management0-port.nmconnection'
+  register: r_removed
+
+# ── Conditional reboot ────────────────────────────────────────────────────
+
+- name: Flag that core config changed
+  ansible.builtin.set_fact:
+    _net_changed: true
+  when: r_mgmt0.changed or r_port.changed or r_vlan2.changed or r_marisol0.changed or r_vlan3.changed or r_iot0.changed
+
+- name: Flag that a conflicting connection was removed
+  ansible.builtin.set_fact:
+    _net_changed: true
+  loop: "{{ r_removed.results | default([]) }}"
+  when: item.changed | default(false)
+
+- name: Reboot to activate new network configuration
+  ansible.builtin.reboot:
+    msg: Rebooting to apply new NetworkManager keyfiles
+    pre_reboot_delay: 5
+    post_reboot_delay: 30
+    connect_timeout: 10
+    reboot_timeout: 300
+  when: _net_changed | default(false)

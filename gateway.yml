@@ -1,0 +1,12 @@
+---
+- name: Configure gateway (OpenBSD)
+  hosts: gateway
+  become: true
+  gather_facts: true
+  roles:
+    - role: gateway-network
+      tags: gateway-network
+    - role: dhcpd
+      tags: dhcpd
+    - role: unbound
+      tags: unbound

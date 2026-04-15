@@ -1,0 +1,15 @@
+---
+- name: Deploy dhcpd.conf
+  ansible.builtin.template:
+    src: dhcpd.conf.j2
+    dest: /etc/dhcpd.conf
+    owner: root
+    group: wheel
+    mode: '0644'
+  notify: Restart dhcpd
+
+- name: Ensure dhcpd is enabled and running
+  ansible.builtin.service:
+    name: dhcpd
+    enabled: true
+    state: started

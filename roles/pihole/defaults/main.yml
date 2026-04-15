@@ -1,0 +1,26 @@
+---
+pihole_compose_path: /var/lab/compose/pihole.yml
+pihole_cert_dest:    /var/lab/certs/PiHole.pem
+pihole_tz:           US/Eastern
+
+pihole_instances:
+  - name:     pihole-management
+    ip:       192.168.1.5
+    upstream: 192.168.1.1
+    network:  lab-management0-macvlan
+    hostname: pihole.marisol.home
+    domain:   pihole.marisol.home
+
+  - name:     pihole-marisol
+    ip:       10.47.2.5
+    upstream: 10.47.2.1
+    network:  lab-marisol0-macvlan
+    hostname: pihole-marisol.marisol.home
+    domain:   pihole-marisol.marisol.home
+
+  - name:     pihole-iot
+    ip:       10.47.3.5
+    upstream: 10.47.3.1
+    network:  lab-iot0-macvlan
+    hostname: pihole-iot.marisol.home
+    domain:   pihole-iot.marisol.home

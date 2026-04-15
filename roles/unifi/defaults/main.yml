@@ -1,0 +1,6 @@
+---
+unifi_os_installer: unifi-os-server.installer
+
+unifi_prerequisites:
+  - podman
+  - slirp4netns

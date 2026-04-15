@@ -1,0 +1,63 @@
+---
+dhcpd_default_lease_time: 300
+dhcpd_max_lease_time:     604800
+dhcpd_domain_name:        marisol.home
+
+dhcpd_subnets:
+
+  - subnet:  192.168.1.0
+    netmask: 255.255.255.0
+    range:   [192.168.1.65,  192.168.1.192]
+    routers: 192.168.1.1
+    dns:     [192.168.1.5]
+    hosts:
+      - { name: unifi,    mac: "dc:a6:32:d0:9c:a6", ip: 192.168.1.2  }
+      - { name: lab,      mac: "a8:20:66:12:44:60", ip: 192.168.1.3  }
+      - { name: nas,      mac: "a0:d3:c1:20:d9:8a", ip: 192.168.1.4  }
+      - { name: piHole,   mac: "dc:a6:32:69:66:ed", ip: 192.168.1.5  }
+      - { name: office,   mac: "f4:92:bf:69:41:ee", ip: 192.168.1.14 }
+      - { name: sunroom,  mac: "74:83:c2:02:7d:aa", ip: 192.168.1.16 }
+      - { name: library,  mac: "f4:92:bf:69:45:d8", ip: 192.168.1.18 }
+      - { name: cottingly,mac: "e0:63:da:7c:03:5f", ip: 192.168.1.20 }
+      - { name: freebsd,  mac: "52:54:00:c7:06:42", ip: 192.168.1.32 }
+      - { name: netbsd,   mac: "52:54:00:92:ca:ac", ip: 192.168.1.33 }
+      - { name: openbsd,  mac: "52:54:00:88:45:ec", ip: 192.168.1.34 }
+      - { name: rhel8,    mac: "52:54:00:aa:74:f7", ip: 192.168.1.35 }
+      - { name: rhel9,    mac: "52:54:00:6c:6e:a0", ip: 192.168.1.36 }
+      - { name: rhel10,   mac: "52:54:00:58:bd:88", ip: 192.168.1.37 }
+      - { name: oracle8,  mac: "52:54:00:8f:88:98", ip: 192.168.1.38 }
+      - { name: oracle9,  mac: "52:54:00:40:66:71", ip: 192.168.1.39 }
+      - { name: oracle10, mac: "52:54:00:32:73:37", ip: 192.168.1.40 }
+      - { name: bionic,   mac: "52:54:00:47:71:10", ip: 192.168.1.41 }
+      - { name: focal,    mac: "52:54:00:47:71:11", ip: 192.168.1.42 }
+      - { name: jammy,    mac: "52:54:00:47:71:12", ip: 192.168.1.43 }
+      - { name: noble,    mac: "52:54:00:47:71:13", ip: 192.168.1.44 }
+      - { name: torrent,  mac: "52:54:00:70:1f:35", ip: 192.168.1.63 }
+
+  - subnet:  10.47.2.0
+    netmask: 255.255.255.0
+    range:   [10.47.2.33, 10.47.2.192]
+    routers: 10.47.2.1
+    dns:     [10.47.2.5]
+    hosts:
+      - { name: pihole,   mac: "dc:a6:32:69:66:ed", ip: 10.47.2.5  }
+      - { name: jellyfin, mac: "00:16:3E:91:31:07",  ip: 10.47.2.6  }
+      - { name: piBSD,    mac: "dc:a6:32:d0:9c:a6",  ip: 10.47.2.10 }
+      - { name: pinetbsd, mac: "dc:a6:32:d0:9c:a7",  ip: 10.47.2.17 }
+
+  - subnet:  10.47.3.0
+    netmask: 255.255.255.0
+    range:   [10.47.3.17, 10.47.3.248]
+    routers: 10.47.3.1
+    dns:     [10.47.3.5]
+    hosts:
+      - { name: pihole, mac: "dc:a6:32:69:66:ed", ip: 10.47.3.5 }
+
+  - subnet:  10.47.4.0
+    netmask: 255.255.255.0
+    range:   [10.47.4.17, 10.47.4.248]
+    routers: 10.47.4.1
+    dns:     [10.47.4.1]
+    hosts:
+      - { name: bward-mbp, mac: "6e:14:68:85:47:c6", ip: 10.47.4.8 }
+      - { name: iphone,    mac: "7a:f1:ec:bc:34:9b", ip: 10.47.4.9 }

@@ -1,0 +1,13 @@
+filetype plugin indent on
+set ts=2
+set shiftwidth=2
+set softtabstop=2
+set expandtab
+set autoindent
+set number
+set relativenumber
+set backspace=indent,eol,start
+set incsearch
+set hlsearch
+set noswapfile
+syntax on

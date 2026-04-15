@@ -1,0 +1,29 @@
+---
+- name: Install marisol CA certificate
+  ansible.builtin.copy:
+    src: marisol.crt
+    dest: /etc/pki/ca-trust/source/anchors/marisol.crt
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Update CA trust
+
+- name: Update all packages
+  ansible.builtin.dnf:
+    name: '*'
+    state: latest
+
+- name: Check if reboot is required
+  ansible.builtin.command: needs-restarting -r
+  register: _reboot_check
+  changed_when: false
+  failed_when: false
+
+- name: Reboot if required
+  ansible.builtin.reboot:
+    msg: Rebooting after package updates
+    pre_reboot_delay: 5
+    post_reboot_delay: 30
+    connect_timeout: 10
+    reboot_timeout: 300
+  when: _reboot_check.rc == 1

@@ -1,0 +1,14 @@
+---
+macvlan_networks:
+  - name:    lab-management0-macvlan
+    subnet:  192.168.1.0/24
+    gateway: 192.168.1.1
+    parent:  management0
+  - name:    lab-marisol0-macvlan
+    subnet:  10.47.2.0/24
+    gateway: 10.47.2.1
+    parent:  marisol0
+  - name:    lab-iot0-macvlan
+    subnet:  10.47.3.0/24
+    gateway: 10.47.3.1
+    parent:  iot0

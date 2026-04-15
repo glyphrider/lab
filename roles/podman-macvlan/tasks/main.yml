@@ -1,0 +1,14 @@
+---
+- name: Create macvlan networks
+  ansible.builtin.command:
+    cmd: >
+      podman network create
+      --driver macvlan
+      --subnet {{ item.subnet }}
+      --gateway {{ item.gateway }}
+      -o parent={{ item.parent }}
+      {{ item.name }}
+  loop: "{{ macvlan_networks }}"
+  register: _result
+  failed_when: _result.rc != 0 and 'already exists' not in _result.stderr
+  changed_when: _result.rc == 0

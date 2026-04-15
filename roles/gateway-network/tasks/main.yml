@@ -1,0 +1,26 @@
+---
+- name: Find hostname.* files currently on host
+  ansible.builtin.find:
+    paths: /etc
+    patterns: "hostname.*"
+  register: _host_files
+
+- name: Deploy hostname.* files from project
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/{{ item | basename }}"
+    owner: root
+    group: wheel
+    mode: '0640'
+  with_fileglob: "hostname.*"
+  notify: Reboot gateway
+
+- name: Remove hostname.* files not managed by project
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ _host_files.files }}"
+  when: >-
+    item.path | basename not in
+    (query('fileglob', role_path + '/files/hostname.*') | map('basename') | list)
+  notify: Reboot gateway

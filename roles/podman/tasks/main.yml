@@ -1,0 +1,17 @@
+---
+- name: Ensure podman and podman-compose are installed
+  ansible.builtin.dnf:
+    name:
+      - podman
+      - podman-compose
+    state: present
+
+- name: Configure container registries
+  ansible.builtin.copy:
+    dest: /etc/containers/registries.conf.d/docker-io.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [[registry]]
+      location = "docker.io"

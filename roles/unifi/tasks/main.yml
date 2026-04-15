@@ -1,0 +1,63 @@
+---
+# ── CA certificate ────────────────────────────────────────────────────────────
+
+- name: Install marisol CA certificate
+  ansible.builtin.copy:
+    src: marisol.crt
+    dest: /usr/local/share/ca-certificates/marisol.crt
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Update CA certificates
+
+# ── Prerequisites & install ───────────────────────────────────────────────────
+
+- name: Install UniFi OS prerequisites
+  ansible.builtin.apt:
+    name: "{{ unifi_prerequisites }}"
+    state: present
+    update_cache: true
+
+- name: Check if UniFi OS Server is already installed
+  ansible.builtin.stat:
+    path: /var/lib/uosserver
+  register: _unifi_installed
+
+- name: Copy UniFi OS Server installer
+  ansible.builtin.copy:
+    src: "{{ unifi_os_installer }}"
+    dest: "/tmp/{{ unifi_os_installer }}"
+    mode: '0755'
+  when: not _unifi_installed.stat.exists
+
+- name: Run UniFi OS Server installer
+  ansible.builtin.shell: "echo 'y' | /tmp/{{ unifi_os_installer }}"
+  when: not _unifi_installed.stat.exists
+
+# ── Certificate ───────────────────────────────────────────────────────────────
+
+- name: Copy certificate files to VM
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: uosserver
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: unifi.crt, dest: /tmp/unifi-core.crt, mode: '0644' }
+    - { src: unifi.key, dest: /tmp/unifi-core.key, mode: '0600' }
+  register: _certs
+
+- name: Copy certificate into container
+  ansible.builtin.command: "sudo -u uosserver podman cp {{ item.src }} uosserver:{{ item.dest }}"
+  args:
+    chdir: /tmp
+  loop:
+    - { src: /tmp/unifi-core.crt, dest: /data/unifi-core/config/unifi-core.crt }
+    - { src: /tmp/unifi-core.key, dest: /data/unifi-core/config/unifi-core.key }
+  when: _certs.changed
+
+- name: Restart uosserver container
+  ansible.builtin.command: sudo -u uosserver podman restart uosserver
+  args:
+    chdir: /tmp
+  when: _certs.changed

@@ -1,0 +1,11 @@
+version: 2
+ethernets:
+  {{ vm_network_interface }}:
+    addresses:
+      - {{ vm_ip }}/24
+    routes:
+      - to: default
+        via: {{ vm_gateway }}
+    nameservers:
+      addresses:
+        - {{ vm_dns }}

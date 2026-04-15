@@ -1,0 +1,35 @@
+---
+- name: Deploy baseline root hints
+  ansible.builtin.copy:
+    src: root.hints
+    dest: "{{ unbound_root_hints_path }}"
+    owner: root
+    group: wheel
+    mode: '0644'
+    force: false
+  notify: Restart unbound
+
+- name: Update root hints from internic.net
+  ansible.builtin.get_url:
+    url: "{{ unbound_root_hints_url }}"
+    dest: "{{ unbound_root_hints_path }}"
+    owner: root
+    group: wheel
+    mode: '0644'
+  notify: Restart unbound
+  ignore_errors: true
+
+- name: Deploy unbound.conf
+  ansible.builtin.template:
+    src: unbound.conf.j2
+    dest: /etc/unbound/unbound.conf
+    owner: root
+    group: wheel
+    mode: '0644'
+  notify: Restart unbound
+
+- name: Ensure unbound is enabled and running
+  ansible.builtin.service:
+    name: unbound
+    enabled: true
+    state: started

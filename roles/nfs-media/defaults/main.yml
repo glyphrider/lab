@@ -1,0 +1,8 @@
+---
+nfs_server: nas.marisol.home
+
+nfs_mounts:
+  - src: "{{ nfs_server }}:/mnt/tank/media/movies"
+    path: /media/movies
+  - src: "{{ nfs_server }}:/mnt/tank/media/shows"
+    path: /media/shows

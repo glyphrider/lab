@@ -1,0 +1,8 @@
+---
+- name: Ensure VA-API packages are installed
+  ansible.builtin.dnf:
+    name:
+      - libva
+      - mesa-va-drivers
+      - libva-utils
+    state: present
