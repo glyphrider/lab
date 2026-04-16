@@ -30,17 +30,12 @@ graph TB
     ont[ONT\nFrontier Fiber]
     switch[Cisco Catalyst\nWS-C3650-48PS\n192.168.1.253]
 
-    inet -->|fiber| ont -->|2.5Gb — igc0| gateway
-    gateway -->|4x1Gb LACP — aggr0| switch
+    inet -->|fiber| ont -->|2.5Gb — igc0| gateway -->|4x1Gb LACP — aggr0| switch
 
     subgraph gateway [Gateway 192.168.1.1]
-        aggr0[aggr0\nbge0+bge1+bge2+bge3]
         vlan2[vlan2 — 10.47.2.1]
         vlan3[vlan3 — 10.47.3.1]
         vlan4[vlan4 — 10.47.4.1]
-        aggr0 --> vlan2
-        aggr0 --> vlan3
-        aggr0 --> vlan4
     end
 
     subgraph management [Management — 192.168.1.0/24]
@@ -67,9 +62,9 @@ graph TB
     end
 
     switch <--> management
-    vlan2 <--> marisol
-    vlan3 <--> iot
-    vlan4 <--> work
+    switch -->|vlan2| vlan2 <--> marisol
+    switch -->|vlan3| vlan3 <--> iot
+    switch -->|vlan4| vlan4 <--> work
 ```
 
 ### Lab Server — Network Configuration
