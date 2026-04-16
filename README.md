@@ -10,6 +10,7 @@ Ansible automation for a home lab network.
 | gateway | 192.168.1.1 | OpenBSD | Router — DHCP, DNS, firewall |
 | unifi | 192.168.1.2 | Ubuntu 24.04 VM | UniFi OS Server |
 | nas | 192.168.1.4 | TrueNAS Scale | NFS file server _(not automated)_ |
+| switch | 192.168.1.253 | Cisco Catalyst WS-C3650-48PS | 48-port PoE switch _(not automated)_ |
 | pihole2 | 192.168.1.251 | Raspberry Pi OS (Bookworm) | Secondary DNS — pihole redundancy |
 
 ## Networks
@@ -19,15 +20,18 @@ Ansible automation for a home lab network.
 | management | 192.168.1.0/24 | Primary LAN |
 | marisol | 10.47.2.0/24 | Guest/media VLAN |
 | iot | 10.47.3.0/24 | IoT VLAN |
+| marisol-work | 10.47.4.0/24 | Work VLAN — isolated, gateway only |
 
 ### Network Overview
 
 ```mermaid
 graph TB
     inet([Internet])
-    igc0[igc0 — WAN\nautoconf]
+    ont[ONT\nFrontier Fiber]
+    switch[Cisco Catalyst\nWS-C3650-48PS\n192.168.1.253]
 
-    inet --> igc0 --> gateway
+    inet -->|fiber| ont -->|2.5Gb — igc0| gateway
+    gateway -->|4x1Gb LACP — aggr0| switch
 
     subgraph gateway [Gateway 192.168.1.1]
         aggr0[aggr0\nbge0+bge1+bge2+bge3]
@@ -58,9 +62,14 @@ graph TB
         pihole2_iot[pihole2\n10.47.3.251]
     end
 
-    aggr0 <--> management
+    subgraph work [Marisol-Work — 10.47.4.0/24\nisolated — gateway only]
+        work_note[DHCP + DNS\nfrom gateway]
+    end
+
+    switch <--> management
     vlan2 <--> marisol
     vlan3 <--> iot
+    vlan4 <--> work
 ```
 
 ### Lab Server — Network Configuration
@@ -130,19 +139,23 @@ graph TB
 
 ```mermaid
 graph TB
-    igc0[igc0 — WAN\nautoconf / autoconf6]
+    ont[ONT\nFrontier Fiber]
+    igc0[igc0\n2.5Gb — WAN\nautoconf / autoconf6]
+    ont -->|2.5Gb| igc0
 
     subgraph trunk [LACP Trunk — aggr0]
         bge0 & bge1 & bge2 & bge3
     end
 
-    aggr0[aggr0\ntrunk member]
+    aggr0[aggr0\n4x1Gb LACP]
     bge0 & bge1 & bge2 & bge3 --> aggr0
+    switch[Cisco Catalyst\nWS-C3650-48PS\n192.168.1.253]
+    aggr0 <-->|trunk| switch
 
     aggr0 -->|untagged| mgmt[aggr0\n192.168.1.1/24\nManagement]
     aggr0 -->|vnetid 2| vlan2[vlan2\n10.47.2.1/24\nMarisol]
     aggr0 -->|vnetid 3| vlan3[vlan3\n10.47.3.1/24\nIoT]
-    aggr0 -->|vnetid 4| vlan4[vlan4\n10.47.4.1/24\nVLAN4]
+    aggr0 -->|vnetid 4| vlan4[vlan4\n10.47.4.1/24\nMarisol-Work]
 
     mgmt   --> dhcpd[dhcpd\ndns: .5 + .251]
     vlan2  --> dhcpd
@@ -153,13 +166,15 @@ graph TB
         view_mgmt[management view\n192.168.1.0/24 + 127.0.0.0/8\nfull internal records]
         view_marisol[marisol view\n10.47.2.0/24\ngateway + pihole + pihole2 + jellyfin]
         view_iot[iot view\n10.47.3.0/24\ngateway + pihole + pihole2]
+        view_work[work view\n10.47.4.0/24\ngateway only]
     end
 
     mgmt  --> view_mgmt
     vlan2 --> view_marisol
     vlan3 --> view_iot
+    vlan4 --> view_work
 
-    igc0 --> inet([Internet])
+    igc0 --> ont2[ONT\nFrontier Fiber] --> inet([Internet])
     view_mgmt & view_marisol & view_iot -->|recursive resolution| inet
 ```
 
