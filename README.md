@@ -9,6 +9,7 @@ Ansible automation for a home lab network.
 | lab | 192.168.1.3 | Fedora 43 | Primary server — containers, VMs, NFS client |
 | gateway | 192.168.1.1 | OpenBSD | Router — DHCP, DNS, firewall |
 | unifi | 192.168.1.2 | Ubuntu 24.04 VM | UniFi OS Server |
+| nas | 192.168.1.4 | TrueNAS Scale | NFS file server _(not automated)_ |
 | pihole2 | 192.168.1.251 | Raspberry Pi OS (Bookworm) | Secondary DNS — pihole redundancy |
 
 ## Networks
@@ -99,6 +100,9 @@ graph TB
     end
 
     management0 --> unifi_vm
+
+    nas[nas\n192.168.1.4\nTrueNAS Scale]
+    management0 -->|NFS| nas
 ```
 
 ### pihole2 (Raspberry Pi) — Network Configuration
