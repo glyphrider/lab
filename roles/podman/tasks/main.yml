@@ -1,6 +1,6 @@
 ---
 - name: Ensure podman and podman-compose are installed
-  ansible.builtin.dnf:
+  ansible.builtin.package:
     name:
       - podman
       - podman-compose

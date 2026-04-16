@@ -34,6 +34,7 @@ unbound_views:
       - { name: sunroom,   ip: 192.168.1.16 }
       - { name: library,   ip: 192.168.1.18 }
       - { name: cottingly, ip: 192.168.1.20 }
+      - { name: pihole2,   ip: 192.168.1.251 }
       - { name: jellyfin,  ip: 10.47.2.6 }
 
   - name: marisol
@@ -43,6 +44,7 @@ unbound_views:
       - { name: gateway,   ip: 10.47.2.1 }
       - { name: pihole,    ip: 10.47.2.5 }
       - { name: jellyfin,  ip: 10.47.2.6 }
+      - { name: pihole2,   ip: 10.47.2.251 }
 
   - name: iot
     clients:
@@ -50,6 +52,7 @@ unbound_views:
     records:
       - { name: gateway,   ip: 10.47.3.1 }
       - { name: pihole,    ip: 10.47.3.5 }
+      - { name: pihole2,   ip: 10.47.3.251 }
 
   - name: work
     clients:

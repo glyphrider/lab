@@ -4,13 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-Ansible automation for a home lab consisting of three managed hosts:
+Ansible automation for a home lab consisting of four managed hosts:
 
 | Host | IP | OS | Playbook |
 |------|----|----|----------|
 | lab | 192.168.1.3 | Fedora 43 | `lab.yml` |
 | gateway | 192.168.1.1 | OpenBSD | `gateway.yml` |
 | unifi | 192.168.1.2 | Ubuntu 24.04 VM | `lab.yml` (second play) |
+| pihole2 | 192.168.1.251 | Raspberry Pi OS (Bookworm) | `pi.yml` |
 
 ## Running playbooks
 
@@ -18,10 +19,12 @@ Ansible automation for a home lab consisting of three managed hosts:
 # Full run
 ansible-playbook lab.yml --ask-vault-pass
 ansible-playbook gateway.yml --ask-vault-pass
+ansible-playbook pi.yml --ask-vault-pass
 
 # Single role (all roles are tagged with their name)
 ansible-playbook lab.yml --tags pihole --ask-vault-pass
 ansible-playbook gateway.yml --tags unbound --ask-vault-pass
+ansible-playbook pi.yml --tags pihole --ask-vault-pass
 
 # Dry run
 ansible-playbook gateway.yml --check --ask-vault-pass
@@ -31,7 +34,9 @@ ansible-playbook gateway.yml --check --ask-vault-pass
 
 Secrets are managed with ansible-vault. Encrypted files:
 - `group_vars/lab/vault.yml` — contains `pihole_password` and `vm_console_password`
-- `roles/pihole/files/pihole.key` — TLS private key
+- `group_vars/pi/vault.yml` — contains `pihole_password` for pihole2
+- `roles/pihole/files/pihole.key` — TLS private key for lab pihole
+- `roles/pihole/files/pihole2.key` — TLS private key for pihole2 pihole
 - `roles/jellyfin/files/jellyfin.key` — TLS private key
 - `roles/unifi/files/unifi.key` — TLS private key
 
@@ -48,6 +53,11 @@ The lab server has a layered bridge stack:
 
 Podman containers attach to macvlan networks parented on these bridges (managed by the `podman-macvlan` role). Each macvlan network is created as an external network and shared across compose stacks.
 
+The pihole2 Pi uses VLAN subinterfaces directly on eth0 (no bridges needed — no VMs or macvlan):
+- `eth0` — 192.168.1.251/24 (management, untagged)
+- `eth0.2` — 10.47.2.251/24 (marisol)
+- `eth0.3` — 10.47.3.251/24 (IoT)
+
 ### DNS (split-horizon)
 
 Unbound on the gateway uses views to return different records per VLAN:
@@ -57,9 +67,17 @@ Unbound on the gateway uses views to return different records per VLAN:
 
 Each pihole instance uses its own VLAN's unbound interface as upstream so DNS views work correctly. Pihole containers also set `dns:` in their compose service to the same upstream, ensuring the gravity update check uses the correct resolver.
 
+DHCP advertises two DNS servers per subnet — primary (`.5`) on lab and secondary (`.251`) on pihole2. Both resolve to the correct VLAN-specific pihole via split-horizon: `pihole.marisol.home` on the primary and `pihole2.marisol.home` on the secondary.
+
 ### Pihole
 
-Three separate containers (one per VLAN), all defined in a single compose file generated from `roles/pihole/templates/pihole.yml.j2`. Each has its own macvlan IP. First-run password initialization is gated by a sentinel dotfile at `/var/lab/.{{ name }}-password-initialized`.
+Two deployments, same role (`roles/pihole`), different `pihole_network_type`:
+
+**Lab (macvlan mode):** Three containers (one per VLAN) each with a dedicated macvlan IP. Defined in a single compose file from `roles/pihole/templates/pihole.yml.j2`. First-run password initialization is gated by a sentinel dotfile at `/var/lab/.{{ name }}-password-initialized`.
+
+**pihole2 / Pi (bridge mode):** Three containers (one per VLAN) using podman port publishing with per-IP binding (`192.168.1.251:53`, `10.47.2.251:53`, `10.47.3.251:53`). No macvlan needed. Requires `FTLCONF_dns_listeningMode: all` since clients arrive with their original source IP after DNAT. Configured via `group_vars/pi/vars.yml`.
+
+TLS cert files are parameterized via `pihole_tls_cert_file` / `pihole_tls_key_file` (defaults: `pihole.crt` / `pihole.key`). The Pi overrides these to `pihole2.crt` / `pihole2.key`.
 
 ### VM (unifi)
 
@@ -69,7 +87,7 @@ The `unifi` role then runs against the VM directly to install UniFi OS Server.
 
 ### CA certificate
 
-`files/marisol.crt` (playbook-level) is the shared internal CA cert. Roles reference it as `src: marisol.crt` (copy module) or `lookup('file', playbook_dir + '/files/marisol.crt')` (pihole). It is deployed to the system trust store on both Fedora (`update-ca-trust`) and Ubuntu (`update-ca-certificates`).
+`files/marisol.crt` (playbook-level) is the shared internal CA cert. Roles reference it as `src: marisol.crt` (copy module) or `lookup('file', playbook_dir + '/files/marisol.crt')` (pihole). It is deployed to the system trust store on Fedora (`update-ca-trust`), Ubuntu (`update-ca-certificates`), and Raspberry Pi OS (`update-ca-certificates`).
 
 ### Gateway
 

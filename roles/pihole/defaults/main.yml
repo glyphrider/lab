@@ -1,7 +1,12 @@
 ---
-pihole_compose_path: /var/lab/compose/pihole.yml
-pihole_cert_dest:    /var/lab/certs/PiHole.pem
-pihole_tz:           US/Eastern
+pihole_compose_path:  /var/lab/compose/pihole.yml
+pihole_cert_dest:     /var/lab/certs/PiHole.pem
+pihole_tz:            US/Eastern
+pihole_network_type:  macvlan
+pihole_tls_enabled:   true
+pihole_tls_cert_file: pihole.crt
+pihole_tls_key_file:  pihole.key
+pihole_compose_bin:   /usr/bin/podman-compose
 
 pihole_instances:
   - name:     pihole-management
@@ -16,11 +21,11 @@ pihole_instances:
     upstream: 10.47.2.1
     network:  lab-marisol0-macvlan
     hostname: pihole-marisol.marisol.home
-    domain:   pihole-marisol.marisol.home
+    domain:   pihole.marisol.home
 
   - name:     pihole-iot
     ip:       10.47.3.5
     upstream: 10.47.3.1
     network:  lab-iot0-macvlan
     hostname: pihole-iot.marisol.home
-    domain:   pihole-iot.marisol.home
+    domain:   pihole.marisol.home

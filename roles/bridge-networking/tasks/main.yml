@@ -202,7 +202,7 @@
 
 - name: Check each keyfile for a direct claim on {{ eth_iface }}
   ansible.builtin.command:
-    cmd: grep -q "interface-name={{ eth_iface }}" "{{ item.path }}"
+    cmd: grep -qE "^interface-name={{ eth_iface }}$" "{{ item.path }}"
   loop: "{{ _all_nm_files.files }}"
   register: _grep_results
   changed_when: false

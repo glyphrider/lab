@@ -1,0 +1,195 @@
+---
+# ── CA certificate ────────────────────────────────────────────────────────────
+
+- name: Install marisol CA certificate
+  ansible.builtin.copy:
+    src: marisol.crt
+    dest: /usr/local/share/ca-certificates/marisol.crt
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Update CA certificates
+
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: pihole2
+
+# ── Network configuration ─────────────────────────────────────────────────────
+# Detect the physical ethernet interface robustly.
+#
+# On the first run the Pi is on DHCP and ansible_default_ipv4.interface is the
+# bare NIC (e.g. eth0).  After a successful run and reboot the static keyfile
+# owns the interface; read it back to stay idempotent.
+
+- name: Check whether eth0 static keyfile already exists
+  ansible.builtin.stat:
+    path: "{{ nm_dir }}/{{ rpi_eth }}.nmconnection"
+  register: _eth_stat
+
+- name: Read physical interface name from existing keyfile
+  ansible.builtin.slurp:
+    src: "{{ nm_dir }}/{{ rpi_eth }}.nmconnection"
+  register: _eth_content
+  when: _eth_stat.stat.exists
+
+- name: Set eth_iface from existing keyfile (idempotent re-run)
+  ansible.builtin.set_fact:
+    eth_iface: >-
+      {{ (_eth_content.content | b64decode
+          | regex_search('(?m)^interface-name=(\S+)', '\1'))[0] }}
+  when: _eth_stat.stat.exists
+
+- name: Set eth_iface from Ansible facts (first run)
+  ansible.builtin.set_fact:
+    eth_iface: "{{ ansible_default_ipv4.interface }}"
+  when: not _eth_stat.stat.exists
+
+# ── Prereqs ───────────────────────────────────────────────────────────────────
+
+- name: Ensure NetworkManager is installed
+  ansible.builtin.apt:
+    name: network-manager
+    state: present
+    update_cache: true
+
+- name: Ensure NetworkManager is enabled and running
+  ansible.builtin.systemd:
+    name: NetworkManager
+    state: started
+    enabled: true
+
+# ── NetworkManager keyfiles ───────────────────────────────────────────────────
+
+- name: Write ethernet keyfile (static management IP)
+  ansible.builtin.copy:
+    dest: "{{ nm_dir }}/{{ rpi_eth }}.nmconnection"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      [connection]
+      id={{ rpi_eth }}
+      type=ethernet
+      interface-name={{ eth_iface }}
+      autoconnect=yes
+
+      [ethernet]
+
+      [ipv4]
+      method=manual
+      address1={{ rpi_mgmt_ip }}/{{ rpi_mgmt_prefix }},{{ rpi_mgmt_gw }}
+      dns={{ rpi_mgmt_dns }};
+
+      [ipv6]
+      method=disabled
+      addr-gen-mode=stable-privacy
+  register: r_eth
+
+- name: Write marisol VLAN keyfile (VLAN {{ rpi_marisol_vlan }} on {{ rpi_eth }})
+  ansible.builtin.copy:
+    dest: "{{ nm_dir }}/{{ rpi_eth }}.{{ rpi_marisol_vlan }}.nmconnection"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      [connection]
+      id={{ rpi_eth }}.{{ rpi_marisol_vlan }}
+      type=vlan
+      interface-name={{ rpi_eth }}.{{ rpi_marisol_vlan }}
+      autoconnect=yes
+
+      [vlan]
+      flags=1
+      id={{ rpi_marisol_vlan }}
+      parent={{ rpi_eth }}
+
+      [ipv4]
+      method=manual
+      address1={{ rpi_marisol_ip }}/{{ rpi_marisol_prefix }}
+      dns={{ rpi_marisol_dns }};
+      never-default=true
+
+      [ipv6]
+      method=disabled
+      addr-gen-mode=stable-privacy
+  register: r_marisol
+
+- name: Write IoT VLAN keyfile (VLAN {{ rpi_iot_vlan }} on {{ rpi_eth }})
+  ansible.builtin.copy:
+    dest: "{{ nm_dir }}/{{ rpi_eth }}.{{ rpi_iot_vlan }}.nmconnection"
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      [connection]
+      id={{ rpi_eth }}.{{ rpi_iot_vlan }}
+      type=vlan
+      interface-name={{ rpi_eth }}.{{ rpi_iot_vlan }}
+      autoconnect=yes
+
+      [vlan]
+      flags=1
+      id={{ rpi_iot_vlan }}
+      parent={{ rpi_eth }}
+
+      [ipv4]
+      method=manual
+      address1={{ rpi_iot_ip }}/{{ rpi_iot_prefix }}
+      dns={{ rpi_iot_dns }};
+      never-default=true
+
+      [ipv6]
+      method=disabled
+      addr-gen-mode=stable-privacy
+  register: r_iot
+
+# ── Remove conflicting connections ────────────────────────────────────────────
+# Any pre-existing keyfile that claims the physical ethernet interface
+# (e.g. the default DHCP connection from RPi OS) will conflict with the
+# static one above.
+
+- name: Find all existing NM keyfiles
+  ansible.builtin.find:
+    paths: "{{ nm_dir }}"
+    patterns: "*.nmconnection"
+  register: _all_nm_files
+
+- name: Check each keyfile for a direct claim on {{ eth_iface }}
+  ansible.builtin.command:
+    cmd: grep -qE "^interface-name={{ eth_iface }}$" "{{ item.path }}"
+  loop: "{{ _all_nm_files.files }}"
+  register: _grep_results
+  changed_when: false
+  failed_when: false
+
+- name: Remove conflicting keyfiles (preserving our static keyfile)
+  ansible.builtin.file:
+    path: "{{ item.item.path }}"
+    state: absent
+  loop: "{{ _grep_results.results }}"
+  when:
+    - item.rc == 0
+    - item.item.path != nm_dir + '/' + rpi_eth + '.nmconnection'
+  register: r_removed
+
+# ── Conditional reboot ────────────────────────────────────────────────────────
+
+- name: Flag that network config changed
+  ansible.builtin.set_fact:
+    _net_changed: true
+  when: r_eth.changed or r_marisol.changed or r_iot.changed
+
+- name: Flag that a conflicting connection was removed
+  ansible.builtin.set_fact:
+    _net_changed: true
+  loop: "{{ r_removed.results | default([]) }}"
+  when: item.changed | default(false)
+
+- name: Reboot to activate new network configuration
+  ansible.builtin.reboot:
+    msg: Rebooting to apply new NetworkManager keyfiles
+    pre_reboot_delay: 5
+    post_reboot_delay: 30
+    connect_timeout: 10
+    reboot_timeout: 300
+  when: _net_changed | default(false)

@@ -4,17 +4,33 @@ services:
     container_name: {{ instance.name }}
     image: docker.io/pihole/pihole
     hostname: {{ instance.hostname }}
+{% if pihole_network_type == 'macvlan' %}
     networks:
       {{ instance.network }}:
         ipv4_address: {{ instance.ip }}
     dns:
       - {{ instance.upstream }}
+{% else %}
+    ports:
+      - "{{ instance.ip }}:53:53/udp"
+      - "{{ instance.ip }}:53:53/tcp"
+      - "{{ instance.ip }}:80:80/tcp"
+      - "{{ instance.ip }}:443:443/tcp"
+    dns:
+      - {{ instance.upstream }}
+{% endif %}
     environment:
       TZ: '{{ pihole_tz }}'
       FTLCONF_webserver_domain: '{{ instance.domain }}'
       FTLCONF_dns_upstreams: '{{ instance.upstream }}'
+      FTLCONF_LOCAL_IPV4: '{{ instance.ip }}'
+{% if pihole_network_type == 'bridge' %}
+      FTLCONF_dns_listeningMode: 'all'
+{% endif %}
     volumes:
+{% if pihole_tls_enabled | default(true) %}
       - '{{ pihole_cert_dest }}:/etc/pihole/tls.pem'
+{% endif %}
       - '{{ instance.name }}-etc:/etc/pihole'
     cap_add:
       - NET_ADMIN
@@ -29,8 +45,10 @@ volumes:
     name: {{ instance.name }}-etc
 {% endfor %}
 
+{% if pihole_network_type == 'macvlan' %}
 networks:
 {% for network in pihole_instances | map(attribute='network') | unique %}
   {{ network }}:
     external: true
 {% endfor %}
+{% endif %}

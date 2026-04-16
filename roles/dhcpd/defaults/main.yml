@@ -9,9 +9,9 @@ dhcpd_subnets:
     netmask: 255.255.255.0
     range:   [192.168.1.65,  192.168.1.192]
     routers: 192.168.1.1
-    dns:     [192.168.1.5]
+    dns:     [192.168.1.5, 192.168.1.251]
     hosts:
-      - { name: unifi,    mac: "dc:a6:32:d0:9c:a6", ip: 192.168.1.2  }
+      # - { name: unifi,    mac: "dc:a6:32:d0:9c:a6", ip: 192.168.1.2  }
       - { name: lab,      mac: "a8:20:66:12:44:60", ip: 192.168.1.3  }
       - { name: nas,      mac: "a0:d3:c1:20:d9:8a", ip: 192.168.1.4  }
       - { name: piHole,   mac: "dc:a6:32:69:66:ed", ip: 192.168.1.5  }
@@ -33,12 +33,13 @@ dhcpd_subnets:
       - { name: jammy,    mac: "52:54:00:47:71:12", ip: 192.168.1.43 }
       - { name: noble,    mac: "52:54:00:47:71:13", ip: 192.168.1.44 }
       - { name: torrent,  mac: "52:54:00:70:1f:35", ip: 192.168.1.63 }
+      - { name: pihole2,  mac: "dc:a6:32:d0:9c:a6", ip: 192.168.1.251 }
 
   - subnet:  10.47.2.0
     netmask: 255.255.255.0
     range:   [10.47.2.33, 10.47.2.192]
     routers: 10.47.2.1
-    dns:     [10.47.2.5]
+    dns:     [10.47.2.5, 10.47.2.251]
     hosts:
       - { name: pihole,   mac: "dc:a6:32:69:66:ed", ip: 10.47.2.5  }
       - { name: jellyfin, mac: "00:16:3E:91:31:07",  ip: 10.47.2.6  }
@@ -49,7 +50,7 @@ dhcpd_subnets:
     netmask: 255.255.255.0
     range:   [10.47.3.17, 10.47.3.248]
     routers: 10.47.3.1
-    dns:     [10.47.3.5]
+    dns:     [10.47.3.5, 10.47.3.251]
     hosts:
       - { name: pihole, mac: "dc:a6:32:69:66:ed", ip: 10.47.3.5 }
 

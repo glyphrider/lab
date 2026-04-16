@@ -8,24 +8,32 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0755'
+  when: pihole_tls_enabled | default(true)
 
 - name: Assemble and deploy PiHole.pem
   ansible.builtin.copy:
-    content: "{{ lookup('file', role_path + '/files/pihole.crt') }}\n{{ lookup('file', playbook_dir + '/files/marisol.crt') }}\n{{ lookup('file', role_path + '/files/pihole.key') }}\n"
+    content: "{{ lookup('file', role_path + '/files/' + pihole_tls_cert_file) }}\n{{ lookup('file', playbook_dir + '/files/marisol.crt') }}\n{{ lookup('file', role_path + '/files/' + pihole_tls_key_file) }}\n"
     dest: "{{ pihole_cert_dest }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0600'
+  when: pihole_tls_enabled | default(true)
 
 - name: Set SELinux file context policy for certificate
   community.general.sefcontext:
     target: "{{ pihole_cert_dest }}"
     setype: container_file_t
     state: present
+  when:
+    - pihole_tls_enabled | default(true)
+    - ansible_selinux.status == 'enabled'
 
 - name: Apply SELinux file context to certificate
   ansible.builtin.command: restorecon -v {{ pihole_cert_dest }}
   changed_when: false
+  when:
+    - pihole_tls_enabled | default(true)
+    - ansible_selinux.status == 'enabled'
 
 # ── Compose file ──────────────────────────────────────────────────────────────
 
@@ -61,8 +69,8 @@
       [Service]
       Type=oneshot
       RemainAfterExit=yes
-      ExecStart=/usr/sbin/podman-compose -f {{ pihole_compose_path }} up -d
-      ExecStop=/usr/sbin/podman-compose -f {{ pihole_compose_path }} down
+      ExecStart={{ pihole_compose_bin }} -f {{ pihole_compose_path }} up -d
+      ExecStop={{ pihole_compose_bin }} -f {{ pihole_compose_path }} down
 
       [Install]
       WantedBy=multi-user.target
@@ -111,13 +119,22 @@
 
 # ── Image updates ─────────────────────────────────────────────────────────────
 
+- name: Record current pihole image ID
+  ansible.builtin.command: podman images --quiet docker.io/pihole/pihole
+  register: _image_before
+  changed_when: false
+
 - name: Pull latest pihole image
   ansible.builtin.command: podman pull docker.io/pihole/pihole
-  register: _pull
-  changed_when: "'Image is up to date' not in _pull.stdout"
+  changed_when: false
+
+- name: Record new pihole image ID
+  ansible.builtin.command: podman images --quiet docker.io/pihole/pihole
+  register: _image_after
+  changed_when: false
 
 - name: Restart pihole if image updated
   ansible.builtin.systemd:
     name: pihole
     state: restarted
-  when: _pull.changed
+  when: _image_before.stdout != _image_after.stdout
