@@ -28,9 +28,8 @@ Ansible automation for a home lab network.
 graph TB
     inet([Internet])
     ont[ONT\nFrontier Fiber]
-    switch[Cisco Catalyst\nWS-C3650-48PS\n192.168.1.253]
 
-    inet -->|fiber| ont -->|2.5Gb — igc0| gateway -->|4x1Gb LACP — aggr0| switch
+    inet -->|fiber| ont -->|2.5Gb — igc0| gateway
 
     subgraph gateway [Gateway 192.168.1.1]
         vlan2[vlan2 — 10.47.2.1]
@@ -61,10 +60,10 @@ graph TB
         work_note[DHCP + DNS\nfrom gateway]
     end
 
-    switch <--> management
-    switch -->|vlan2| vlan2 <--> marisol
-    switch -->|vlan3| vlan3 <--> iot
-    switch -->|vlan4| vlan4 <--> work
+    gateway <--> management
+    gateway -->|vlan2| vlan2 <--> marisol
+    gateway -->|vlan3| vlan3 <--> iot
+    gateway -->|vlan4| vlan4 <--> work
 ```
 
 ### Lab Server — Network Configuration
