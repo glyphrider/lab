@@ -1,4 +1,13 @@
 ---
+- name: Deploy pf.conf
+  ansible.builtin.copy:
+    src: pf.conf
+    dest: /etc/pf.conf
+    owner: root
+    group: wheel
+    mode: '0600'
+  notify: Reload pf
+
 - name: Find hostname.* files currently on host
   ansible.builtin.find:
     paths: /etc
