@@ -127,6 +127,12 @@
             - '{{ jellyfin_cert_dir }}/jellyfin.key:/etc/nginx/ssl/jellyfin.key:ro'
             - '{{ jellyfin_nginx_conf }}:/etc/nginx/conf.d/jellyfin.conf:ro'
           restart: unless-stopped
+          healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost"]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 15s
 
         jellyfin:
           image: docker.io/jellyfin/jellyfin
