@@ -26,14 +26,14 @@
     state: present
   when:
     - pihole_tls_enabled | default(true)
-    - ansible_selinux.status == 'enabled'
+    - ansible_facts['selinux']['status'] == 'enabled'
 
 - name: Apply SELinux file context to certificate
   ansible.builtin.command: restorecon -v {{ pihole_cert_dest }}
   changed_when: false
   when:
     - pihole_tls_enabled | default(true)
-    - ansible_selinux.status == 'enabled'
+    - ansible_facts['selinux']['status'] == 'enabled'
 
 # ── Compose file ──────────────────────────────────────────────────────────────
 
