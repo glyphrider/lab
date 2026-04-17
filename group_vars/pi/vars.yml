@@ -1,7 +1,9 @@
 ---
-pihole_network_type: bridge
-pihole_tls_enabled:  false
-pihole_compose_bin:  /usr/bin/podman-compose
+pihole_network_type:  bridge
+pihole_tls_enabled:   true
+pihole_tls_cert_file: pihole2.crt
+pihole_tls_key_file:  pihole2.key
+pihole_compose_bin:   /usr/bin/podman-compose
 
 pihole_instances:
   - name:     pihole-management
