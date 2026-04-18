@@ -4,7 +4,8 @@
   become: true
   gather_facts: true
   roles:
-    - { role: rpi-network, tags: rpi-network }
+    - { role: system-setup,  tags: system-setup }
+    - { role: rpi-network,   tags: rpi-network }
     - { role: podman,      tags: podman }
     - { role: pihole,        tags: pihole }
     - { role: node-exporter, tags: node-exporter }

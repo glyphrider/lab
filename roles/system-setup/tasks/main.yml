@@ -1,29 +1,73 @@
 ---
-- name: Install marisol CA certificate
+# ── CA certificate ────────────────────────────────────────────────────────────
+
+- name: Install marisol CA certificate (Red Hat)
   ansible.builtin.copy:
     src: marisol.crt
     dest: /etc/pki/ca-trust/source/anchors/marisol.crt
     owner: root
     group: root
     mode: '0644'
-  notify: Update CA trust
+  notify: Update CA trust (Red Hat)
+  when: ansible_facts['os_family'] == 'RedHat'
 
-- name: Update all packages
+- name: Install marisol CA certificate (Debian)
+  ansible.builtin.copy:
+    src: marisol.crt
+    dest: /usr/local/share/ca-certificates/marisol.crt
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Update CA trust (Debian)
+  when: ansible_facts['os_family'] == 'Debian'
+
+# ── Package updates ───────────────────────────────────────────────────────────
+
+- name: Update all packages (Red Hat)
   ansible.builtin.dnf:
     name: '*'
     state: latest
+  when: ansible_facts['os_family'] == 'RedHat'
 
-- name: Check if reboot is required
+- name: Update all packages (Debian)
+  ansible.builtin.apt:
+    upgrade: dist
+    update_cache: true
+  when: ansible_facts['os_family'] == 'Debian'
+
+# ── Conditional reboot ────────────────────────────────────────────────────────
+
+- name: Check if reboot is required (Red Hat)
   ansible.builtin.command: needs-restarting -r
   register: _reboot_check
   changed_when: false
   failed_when: false
+  when: ansible_facts['os_family'] == 'RedHat'
 
-- name: Reboot if required
+- name: Check if reboot is required (Debian)
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: _reboot_required_file
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Reboot if required (Red Hat)
   ansible.builtin.reboot:
     msg: Rebooting after package updates
     pre_reboot_delay: 5
     post_reboot_delay: 30
     connect_timeout: 10
     reboot_timeout: 300
-  when: _reboot_check.rc == 1
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - _reboot_check.rc == 1
+
+- name: Reboot if required (Debian)
+  ansible.builtin.reboot:
+    msg: Rebooting after package updates
+    pre_reboot_delay: 5
+    post_reboot_delay: 30
+    connect_timeout: 10
+    reboot_timeout: 300
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - _reboot_required_file.stat.exists
