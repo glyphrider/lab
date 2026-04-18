@@ -190,6 +190,30 @@
       addr-gen-mode=stable-privacy
   register: r_marisol0
 
+- name: Check if mgmt0-shim connection exists
+  ansible.builtin.command: nmcli connection show mgmt0-shim
+  register: _shim_exists
+  failed_when: false
+  changed_when: false
+
+- name: Create mgmt0-shim macvlan connection
+  ansible.builtin.command: >
+    nmcli connection add
+    type macvlan
+    con-name mgmt0-shim
+    ifname mgmt0-shim
+    macvlan.parent {{ mgmt_bridge }}
+    macvlan.mode bridge
+    ip4 {{ mgmt_shim_ip }}/{{ mgmt_prefix }}
+    ipv4.never-default true
+    ipv6.method disabled
+    connection.autoconnect yes
+  when: _shim_exists.rc != 0
+
+- name: Bring up shim interface
+  ansible.builtin.command: nmcli connection up mgmt0-shim
+  when: _shim_exists.rc != 0
+
 # ── Remove conflicting connections ────────────────────────────────────────
 # Any pre-existing keyfile that directly claims the physical ethernet
 # interface (other than our port file) will fight with the bridge on reboot.

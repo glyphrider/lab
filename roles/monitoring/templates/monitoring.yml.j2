@@ -1,0 +1,72 @@
+services:
+  prometheus:
+    container_name: prometheus
+    image: docker.io/prom/prometheus
+    networks:
+      lab-management0-macvlan:
+        ipv4_address: {{ prometheus_ip }}
+    volumes:
+      - '{{ prometheus_conf_dir }}/prometheus.yml:/etc/prometheus/prometheus.yml:ro'
+      - 'prometheus-data:/prometheus'
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  grafana:
+    container_name: grafana
+    image: docker.io/grafana/grafana
+    networks:
+      lab-management0-macvlan:
+        ipv4_address: {{ grafana_ip }}
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: '{{ grafana_admin_password }}'
+      GF_SERVER_PROTOCOL: https
+      GF_SERVER_CERT_FILE: /etc/grafana/ssl/grafana.crt
+      GF_SERVER_CERT_KEY: /etc/grafana/ssl/grafana.key
+      GF_SERVER_HTTP_PORT: '443'
+      GF_SERVER_DOMAIN: '{{ grafana_domain }}'
+    volumes:
+      - '{{ grafana_cert_dest }}:/etc/grafana/ssl/grafana.crt:ro'
+      - '{{ grafana_key_dest }}:/etc/grafana/ssl/grafana.key:ro'
+      - '{{ grafana_provisioning_dir }}:/etc/grafana/provisioning/datasources:ro'
+      - 'grafana-data:/var/lib/grafana'
+    cap_add:
+      - NET_BIND_SERVICE
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "--no-check-certificate", "https://localhost:443/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  pihole-exporter:
+    container_name: pihole-exporter
+    image: docker.io/ekofr/pihole-exporter
+    networks:
+      lab-management0-macvlan:
+        ipv4_address: {{ pihole_exporter_ip }}
+    environment:
+      PIHOLE_HOSTNAME: '{{ pihole_management_ip }}'
+      PIHOLE_PASSWORD: '{{ pihole_password }}'
+      PIHOLE_PORT: '80'
+      PORT: '9617'
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+    name: prometheus-data
+  grafana-data:
+    name: grafana-data
+
+networks:
+  lab-management0-macvlan:
+    external: true

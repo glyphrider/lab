@@ -6,4 +6,5 @@
   roles:
     - { role: rpi-network, tags: rpi-network }
     - { role: podman,      tags: podman }
-    - { role: pihole,      tags: pihole }
+    - { role: pihole,        tags: pihole }
+    - { role: node-exporter, tags: node-exporter }

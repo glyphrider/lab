@@ -1,0 +1,195 @@
+---
+# ── Certificates ──────────────────────────────────────────────────────────────
+
+- name: Create certificate directory
+  ansible.builtin.file:
+    path: /var/lab/certs
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Deploy Grafana TLS certificate
+  ansible.builtin.copy:
+    src: "{{ grafana_cert_src }}"
+    dest: "{{ grafana_cert_dest }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  notify: Restart monitoring
+
+- name: Deploy Grafana TLS key
+  ansible.builtin.copy:
+    src: "{{ grafana_key_src }}"
+    dest: "{{ grafana_key_dest }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  notify: Restart monitoring
+
+- name: Set SELinux file context for Grafana cert files
+  community.general.sefcontext:
+    target: "{{ item }}"
+    setype: container_file_t
+    state: present
+  loop:
+    - "{{ grafana_cert_dest }}"
+    - "{{ grafana_key_dest }}"
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
+- name: Apply SELinux file context to Grafana cert files
+  ansible.builtin.command: restorecon -v {{ item }}
+  changed_when: false
+  loop:
+    - "{{ grafana_cert_dest }}"
+    - "{{ grafana_key_dest }}"
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
+# ── Config directories ─────────────────────────────────────────────────────────
+
+- name: Create Prometheus config directory
+  ansible.builtin.file:
+    path: "{{ prometheus_conf_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Create Grafana provisioning directory
+  ansible.builtin.file:
+    path: "{{ grafana_provisioning_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+    recurse: true
+
+# ── Config files ───────────────────────────────────────────────────────────────
+
+- name: Deploy prometheus.yml
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ prometheus_conf_dir }}/prometheus.yml"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart monitoring
+
+- name: Set SELinux file context for prometheus.yml
+  community.general.sefcontext:
+    target: "{{ prometheus_conf_dir }}/prometheus.yml"
+    setype: container_file_t
+    state: present
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
+- name: Apply SELinux file context to prometheus.yml
+  ansible.builtin.command: restorecon -v {{ prometheus_conf_dir }}/prometheus.yml
+  changed_when: false
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
+- name: Deploy Grafana datasource provisioning
+  ansible.builtin.template:
+    src: datasource.yml.j2
+    dest: "{{ grafana_provisioning_dir }}/prometheus.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  notify: Restart monitoring
+
+- name: Set SELinux file context for Grafana provisioning
+  community.general.sefcontext:
+    target: "{{ grafana_provisioning_dir }}(/.*)?"
+    setype: container_file_t
+    state: present
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
+- name: Apply SELinux file context to Grafana provisioning directory
+  ansible.builtin.command: restorecon -Rv {{ grafana_provisioning_dir }}
+  changed_when: false
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
+# ── Compose file ───────────────────────────────────────────────────────────────
+
+- name: Create compose directory
+  ansible.builtin.file:
+    path: "{{ monitoring_compose_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy monitoring.yml
+  ansible.builtin.template:
+    src: monitoring.yml.j2
+    dest: "{{ monitoring_compose_path }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  register: r_compose
+
+# ── Systemd service ────────────────────────────────────────────────────────────
+
+- name: Deploy monitoring systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/monitoring.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Monitoring Stack (Prometheus + Grafana)
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart={{ monitoring_compose_bin }} -f {{ monitoring_compose_path }} up -d
+      ExecStop={{ monitoring_compose_bin }} -f {{ monitoring_compose_path }} down
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Reload systemd
+
+- name: Enable and start monitoring service
+  ansible.builtin.systemd:
+    name: monitoring
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Restart monitoring if compose file changed
+  ansible.builtin.systemd:
+    name: monitoring
+    state: restarted
+  when: r_compose.changed
+
+# ── Image updates ──────────────────────────────────────────────────────────────
+
+- name: Record current image IDs
+  ansible.builtin.shell: |
+    podman images --quiet docker.io/prom/prometheus
+    podman images --quiet docker.io/grafana/grafana
+    podman images --quiet docker.io/ekofr/pihole-exporter
+  register: _images_before
+  changed_when: false
+
+- name: Pull latest monitoring images
+  ansible.builtin.command: podman pull {{ item }}
+  loop:
+    - docker.io/prom/prometheus
+    - docker.io/grafana/grafana
+    - docker.io/ekofr/pihole-exporter
+  changed_when: false
+
+- name: Record new image IDs
+  ansible.builtin.shell: |
+    podman images --quiet docker.io/prom/prometheus
+    podman images --quiet docker.io/grafana/grafana
+    podman images --quiet docker.io/ekofr/pihole-exporter
+  register: _images_after
+  changed_when: false
+
+- name: Restart monitoring if images updated
+  ansible.builtin.systemd:
+    name: monitoring
+    state: restarted
+  when: _images_before.stdout != _images_after.stdout

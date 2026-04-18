@@ -36,6 +36,8 @@ unbound_views:
       - { name: cottingly, ip: 192.168.1.20 }
       - { name: pihole2,   ip: 192.168.1.251 }
       - { name: jellyfin,  ip: 10.47.2.6 }
+      - { name: grafana,   ip: 192.168.1.7 }
+      - { name: prometheus, ip: 192.168.1.8 }
 
   - name: marisol
     clients:

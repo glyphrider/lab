@@ -1,0 +1,17 @@
+---
+monitoring_compose_path: /var/lab/compose/monitoring.yml
+monitoring_compose_bin:  /usr/bin/podman-compose
+
+grafana_ip:       192.168.1.7
+grafana_domain:   grafana.marisol.home
+grafana_cert_src: grafana.crt
+grafana_key_src:  grafana.key
+grafana_cert_dest: /var/lab/certs/grafana.crt
+grafana_key_dest:  /var/lab/certs/grafana.key
+grafana_provisioning_dir: /var/lab/conf/grafana/provisioning/datasources
+
+prometheus_ip:       192.168.1.8
+prometheus_conf_dir: /var/lab/conf/prometheus
+
+pihole_exporter_ip:       192.168.1.9
+pihole_management_ip:     192.168.1.5

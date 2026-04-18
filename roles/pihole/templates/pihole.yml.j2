@@ -45,6 +45,20 @@ services:
       start_period: 15s
 
 {% endfor %}
+{% if pihole_network_type == 'bridge' %}
+  pihole-exporter:
+    container_name: pihole-exporter
+    image: docker.io/ekofr/pihole-exporter
+    ports:
+      - "{{ pihole_instances[0].ip }}:9617:9617"
+    environment:
+      PIHOLE_HOSTNAME: '{{ pihole_instances[0].name }}'
+      PIHOLE_PASSWORD: '{{ pihole_password }}'
+      PIHOLE_PORT: '80'
+      PORT: '9617'
+    restart: unless-stopped
+
+{% endif %}
 volumes:
 {% for instance in pihole_instances %}
   {{ instance.name }}-etc:

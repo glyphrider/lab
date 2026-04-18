@@ -24,6 +24,10 @@
       tags: jellyfin
     - role: virtualization
       tags: virtualization
+    - role: node-exporter
+      tags: node-exporter
+    - role: monitoring
+      tags: monitoring
 
 - name: Configure UniFi VM
   hosts: unifi
@@ -32,3 +36,5 @@
   roles:
     - role: unifi
       tags: unifi
+    - role: node-exporter
+      tags: node-exporter

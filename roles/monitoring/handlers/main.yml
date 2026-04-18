@@ -1,0 +1,9 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart monitoring
+  ansible.builtin.systemd:
+    name: monitoring
+    state: restarted
