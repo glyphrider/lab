@@ -30,6 +30,7 @@ unbound_views:
       - { name: rhel8,      ip: 192.168.1.35  }
       - { name: rhel9,      ip: 192.168.1.36  }
       - { name: ol9,        ip: 192.168.1.39  }
+      - { name: switch,     ip: 192.168.1.253 }
       - { name: pihole2,    ip: 192.168.1.251 }
       - { name: jellyfin,   ip: 10.47.2.6     }
       - { name: grafana,    ip: 192.168.1.7   }
