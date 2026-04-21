@@ -1,0 +1,12 @@
+---
+unbound_container_compose_path: /var/lab/compose/unbound.yml
+unbound_container_conf_dir:     /var/lab/unbound
+unbound_container_compose_bin:  /usr/bin/podman-compose
+
+unbound_container_instances:
+  - network: lab-management0-macvlan
+    ip:      192.168.1.254
+  - network: lab-marisol0-macvlan
+    ip:      10.47.2.254
+  - network: lab-iot0-macvlan
+    ip:      10.47.3.254

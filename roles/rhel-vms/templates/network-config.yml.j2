@@ -1,0 +1,8 @@
+version: 2
+ethernets:
+  mainif:
+    match:
+      macaddress: "{{ item.mac }}"
+    dhcp4: true
+    dhcp6: false
+    set-name: eth0

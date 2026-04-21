@@ -62,7 +62,6 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0755'
-    recurse: true
 
 # ── Config files ───────────────────────────────────────────────────────────────
 

@@ -10,6 +10,13 @@
     mode: '0644'
   notify: Update CA certificates
 
+# ── System updates ────────────────────────────────────────────────────────────
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: dist
+    update_cache: true
+
 # ── Prerequisites & install ───────────────────────────────────────────────────
 
 - name: Install UniFi OS prerequisites

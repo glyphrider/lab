@@ -1,0 +1,24 @@
+---
+rhel_image_dir:         /var/lib/libvirt/images
+rhel_terraform_dir:     /var/lab/terraform/rhel
+rhel_vm_network_bridge: management0
+rhel_vm_memory:         2048
+rhel_vm_vcpu:           2
+
+rhel_vms:
+  - name:      rhel8
+    image:     rhel-8.10-x86_64-kvm.qcow2
+    mac:       "52:54:00:aa:74:f7"
+    ip:        192.168.1.35
+    disk_size: 51539607552
+  - name:      rhel9
+    image:     rhel-9.7-x86_64-kvm.qcow2
+    mac:       "52:54:00:6c:6e:a0"
+    ip:        192.168.1.36
+    disk_size: 51539607552
+  - name:      ol9
+    image:     OL9U7_x86_64-kvm-b269.qcow2
+    image_url: https://yum.oracle.com/templates/OracleLinux/OL9/u7/x86_64/OL9U7_x86_64-kvm-b269.qcow2
+    mac:       "52:54:00:40:66:71"
+    ip:        192.168.1.39
+    disk_size: 51539607552

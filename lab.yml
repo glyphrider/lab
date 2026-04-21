@@ -28,6 +28,10 @@
       tags: node-exporter
     - role: monitoring
       tags: monitoring
+    - role: unbound-container
+      tags: unbound-container
+    - role: rhel-vms
+      tags: rhel-vms
 
 - name: Configure UniFi VM
   hosts: unifi
@@ -36,5 +40,25 @@
   roles:
     - role: unifi
       tags: unifi
+    - role: node-exporter
+      tags: node-exporter
+
+- name: Configure RHEL VMs
+  hosts: rhel
+  become: true
+  gather_facts: false
+  roles:
+    - role: rhel-setup
+      tags: rhel-setup
+    - role: node-exporter
+      tags: node-exporter
+
+- name: Configure Oracle Linux VMs
+  hosts: ol
+  become: true
+  gather_facts: false
+  roles:
+    - role: ol-setup
+      tags: ol-setup
     - role: node-exporter
       tags: node-exporter

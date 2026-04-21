@@ -6,20 +6,23 @@ pihole_tls_key_file:  pihole2.key
 pihole_compose_bin:   /usr/bin/podman-compose
 
 pihole_instances:
-  - name:     pihole-management
-    ip:       192.168.1.251
-    upstream: 192.168.1.1
-    hostname: pihole2.marisol.home
-    domain:   pihole2.marisol.home
+  - name:      pihole-management
+    ip:        192.168.1.251
+    upstream:  192.168.1.1
+    upstream2: 192.168.1.254
+    hostname:  pihole2.marisol.home
+    domain:    pihole2.marisol.home
 
-  - name:     pihole-marisol
-    ip:       10.47.2.251
-    upstream: 10.47.2.1
-    hostname: pihole2-marisol.marisol.home
-    domain:   pihole2.marisol.home
+  - name:      pihole-marisol
+    ip:        10.47.2.251
+    upstream:  10.47.2.1
+    upstream2: 10.47.2.254
+    hostname:  pihole2-marisol.marisol.home
+    domain:    pihole2.marisol.home
 
-  - name:     pihole-iot
-    ip:       10.47.3.251
-    upstream: 10.47.3.1
-    hostname: pihole2-iot.marisol.home
-    domain:   pihole2.marisol.home
+  - name:      pihole-iot
+    ip:        10.47.3.251
+    upstream:  10.47.3.1
+    upstream2: 10.47.3.254
+    hostname:  pihole2-iot.marisol.home
+    domain:    pihole2.marisol.home

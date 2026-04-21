@@ -1,0 +1,20 @@
+#cloud-config
+hostname: {{ item.name }}
+fqdn: {{ item.name }}.marisol.home
+manage_etc_hosts: true
+
+users:
+  - name: {{ ansible_user }}
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: wheel
+    shell: /bin/bash
+    lock_passwd: false
+    ssh_authorized_keys:
+{% for key in _vm_ssh_keys %}
+      - {{ key }}
+{% endfor %}
+
+chpasswd:
+  list: |
+    {{ ansible_user }}:{{ vm_console_password }}
+  expire: false

@@ -1,0 +1,110 @@
+---
+- name: Create unbound config directory
+  ansible.builtin.file:
+    path: "{{ unbound_container_conf_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+# ── Image build ────────────────────────────────────────────────────────────────
+
+- name: Copy Containerfile to build directory
+  ansible.builtin.copy:
+    src: Containerfile
+    dest: "{{ unbound_container_conf_dir }}/Containerfile"
+    owner: root
+    group: root
+    mode: '0644'
+  register: r_containerfile
+
+- name: Check if unbound image exists
+  ansible.builtin.command: podman image exists localhost/unbound:latest
+  register: _image_exists
+  failed_when: false
+  changed_when: false
+
+- name: Build unbound image
+  ansible.builtin.command: podman build -t localhost/unbound:latest {{ unbound_container_conf_dir }}
+  when: r_containerfile.changed or _image_exists.rc != 0
+  notify: Restart unbound
+
+# ── Config files ───────────────────────────────────────────────────────────────
+
+- name: Deploy baseline root hints
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../unbound/files/root.hints"
+    dest: "{{ unbound_container_conf_dir }}/root.hints"
+    owner: root
+    group: root
+    mode: '0644'
+    force: false
+
+- name: Update root hints from internic.net
+  ansible.builtin.get_url:
+    url: https://www.internic.net/domain/named.root
+    dest: "{{ unbound_container_conf_dir }}/root.hints"
+    owner: root
+    group: root
+    mode: '0644'
+  ignore_errors: true
+
+- name: Deploy unbound.conf
+  ansible.builtin.template:
+    src: unbound.conf.j2
+    dest: "{{ unbound_container_conf_dir }}/unbound.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart unbound
+
+- name: Set SELinux file context for unbound config files
+  community.general.sefcontext:
+    target: "{{ unbound_container_conf_dir }}(/.*)?"
+    setype: container_file_t
+    state: present
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
+- name: Apply SELinux file context to unbound config directory
+  ansible.builtin.command: restorecon -Rv {{ unbound_container_conf_dir }}
+  changed_when: false
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
+# ── Compose + systemd ──────────────────────────────────────────────────────────
+
+- name: Deploy unbound.yml compose file
+  ansible.builtin.template:
+    src: unbound.yml.j2
+    dest: "{{ unbound_container_compose_path }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  register: r_compose
+  notify: Restart unbound
+
+- name: Deploy unbound systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/unbound.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Unbound DNS (container)
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStart={{ unbound_container_compose_bin }} -f {{ unbound_container_compose_path }} up -d
+      ExecStop={{ unbound_container_compose_bin }} -f {{ unbound_container_compose_path }} down
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Restart unbound
+
+- name: Enable and start unbound service
+  ansible.builtin.systemd:
+    name: unbound
+    enabled: true
+    state: started
+    daemon_reload: true

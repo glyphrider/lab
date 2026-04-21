@@ -1,0 +1,72 @@
+---
+- name: Register RHEL subscription
+  ansible.builtin.raw: >
+    subscription-manager register
+    --username='{{ rhsm_username }}'
+    --password='{{ rhsm_password }}'
+    --auto-attach
+  register: _rhsm
+  failed_when:
+    - _rhsm.rc != 0
+    - "'already registered' not in (_rhsm.stdout | default('') + _rhsm.stderr | default(''))"
+  changed_when: _rhsm.rc == 0
+
+- name: Install Python 3.9 and dnf bindings
+  ansible.builtin.raw: dnf install -y python39 python3-dnf
+  register: _py
+  changed_when: "'Nothing to do' not in _py.stdout"
+
+- name: Gather facts
+  ansible.builtin.setup:
+
+- name: Upgrade all packages
+  ansible.builtin.command: dnf upgrade -y
+  register: _upgrade
+  changed_when: "'Nothing to do' not in _upgrade.stdout"
+
+- name: Install insights-client
+  ansible.builtin.command: dnf install -y insights-client
+  register: _insights_install
+  changed_when: "'Nothing to do' not in _insights_install.stdout"
+
+- name: Register with Red Hat Insights
+  ansible.builtin.command: insights-client --register
+  register: _insights_reg
+  failed_when:
+    - _insights_reg.rc != 0
+    - "'already registered' not in (_insights_reg.stdout + _insights_reg.stderr)"
+  changed_when: _insights_reg.rc == 0
+
+- name: Deploy insights-client hourly systemd timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/insights-client.timer
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Red Hat Insights hourly collection
+
+      [Timer]
+      OnCalendar=hourly
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Deploy insights-client systemd service override
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/insights-client.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Red Hat Insights client
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/insights-client
+
+- name: Enable insights-client timer
+  ansible.builtin.systemd:
+    name: insights-client.timer
+    enabled: true
+    state: started
+    daemon_reload: true

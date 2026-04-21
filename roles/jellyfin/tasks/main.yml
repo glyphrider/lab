@@ -122,6 +122,8 @@
             lab-marisol0-macvlan:
               ipv4_address: {{ jellyfin_ip }}
             jellyfin-internal:
+          dns:
+            - {{ jellyfin_dns }}
           volumes:
             - '{{ jellyfin_cert_dir }}/jellyfin.crt:/etc/nginx/ssl/jellyfin.crt:ro'
             - '{{ jellyfin_cert_dir }}/jellyfin.key:/etc/nginx/ssl/jellyfin.key:ro'

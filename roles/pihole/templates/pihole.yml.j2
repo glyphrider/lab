@@ -22,7 +22,7 @@ services:
     environment:
       TZ: '{{ pihole_tz }}'
       FTLCONF_webserver_domain: '{{ instance.domain }}'
-      FTLCONF_dns_upstreams: '{{ instance.upstream }}'
+      FTLCONF_dns_upstreams: '{{ instance.upstream }};{{ instance.upstream2 }}'
       FTLCONF_LOCAL_IPV4: '{{ instance.ip }}'
 {% if pihole_network_type == 'bridge' %}
       FTLCONF_dns_listeningMode: 'all'
