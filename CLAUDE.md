@@ -15,6 +15,8 @@ Ansible automation for a home lab consisting of managed hosts:
 | rhel8 | 192.168.1.35 | RHEL 8 KVM VM | `lab.yml` (fourth play) |
 | rhel9 | 192.168.1.36 | RHEL 9 KVM VM | `lab.yml` (fourth play) |
 | ol9 | 192.168.1.39 | Oracle Linux 9 KVM VM | `lab.yml` (fifth play) |
+| nas | 192.168.1.4 | TrueNAS Scale | _(not automated)_ |
+| switch | 192.168.1.253 | Cisco Catalyst WS-C3650-48PS | _(not automated)_ |
 
 ## Running playbooks
 
@@ -47,7 +49,10 @@ Secrets are managed with ansible-vault. Encrypted files:
 - `roles/jellyfin/files/jellyfin.key` — TLS private key
 - `roles/unifi/files/unifi.key` — TLS private key
 
+To edit an encrypted file: `ansible-vault edit <file>`
 To encrypt a new file: `ansible-vault encrypt <file>`
+
+Available role tags: `system-setup`, `user-setup`, `bridge-networking`, `podman`, `podman-macvlan`, `pihole`, `nfs-media`, `va-api`, `jellyfin`, `virtualization`, `node-exporter`, `monitoring`, `unbound-container`, `rhel-vms`, `unifi`, `gateway-network`, `dhcpd`, `unbound`, `rpi-network`, `rhel-setup`, `ol-setup`
 
 ## Architecture
 
@@ -71,6 +76,7 @@ Unbound on the gateway uses views to return different records per VLAN:
 - `management` view: full internal hostnames for 192.168.1.0/24 and 127.0.0.0/8
 - `marisol` view: only marisol-VLAN-relevant hosts for 10.47.2.0/24
 - `iot` view: only IoT-VLAN-relevant hosts for 10.47.3.0/24
+- `work` view: gateway only for 10.47.4.0/24 (isolated VLAN, no containers)
 
 `unbound_views`, `unbound_local_zone`, and `unbound_access_control` are defined in `group_vars/all/vars.yml` and shared between the gateway `unbound` role and the lab `unbound-container` role.
 
@@ -120,6 +126,10 @@ The `unifi` role then runs against the VM directly to install UniFi OS Server.
 ### CA certificate
 
 `files/marisol.crt` (playbook-level) is the shared internal CA cert. Roles reference it as `src: marisol.crt` (copy module) or `lookup('file', playbook_dir + '/files/marisol.crt')` (pihole). It is deployed to the system trust store on Fedora (`update-ca-trust`), Ubuntu (`update-ca-certificates`), and Raspberry Pi OS (`update-ca-certificates`).
+
+### Monitoring
+
+The `monitoring` role runs Grafana (192.168.1.7) and Prometheus (192.168.1.8) as containers on the lab host. The `node-exporter` role deploys the Prometheus node exporter on all managed Linux hosts (lab, unifi, rhel8, rhel9, ol9).
 
 ### Gateway
 
