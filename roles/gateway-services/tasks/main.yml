@@ -1,0 +1,41 @@
+---
+- name: Deploy ntpd.conf
+  ansible.builtin.copy:
+    src: ntpd.conf
+    dest: /etc/ntpd.conf
+    owner: root
+    group: wheel
+    mode: '0644'
+  notify: Restart ntpd
+
+- name: Enable ntpd
+  ansible.builtin.lineinfile:
+    path: /etc/rc.conf.local
+    line: ntpd_flags="-s"
+    regexp: '^ntpd_flags='
+    create: true
+    owner: root
+    group: wheel
+    mode: '0644'
+  notify: Restart ntpd
+
+- name: Enable remote syslog reception
+  ansible.builtin.lineinfile:
+    path: /etc/rc.conf.local
+    line: syslogd_flags="-u -a 192.168.1.0/24:*"
+    regexp: '^syslogd_flags='
+    create: true
+    owner: root
+    group: wheel
+    mode: '0644'
+  notify: Restart syslogd
+
+- name: Route switch logs to dedicated file
+  ansible.builtin.blockinfile:
+    path: /etc/syslog.conf
+    block: |
+      +switch
+      *.*  /var/log/switch.log
+      +*
+    marker: "# {mark} ANSIBLE MANAGED - switch syslog"
+  notify: Restart syslogd

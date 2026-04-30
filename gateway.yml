@@ -6,6 +6,8 @@
   roles:
     - role: gateway-network
       tags: gateway-network
+    - role: gateway-services
+      tags: gateway-services
     - role: dhcpd
       tags: dhcpd
     - role: unbound

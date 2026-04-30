@@ -1,0 +1,10 @@
+---
+- name: Restart ntpd
+  ansible.builtin.service:
+    name: ntpd
+    state: restarted
+
+- name: Restart syslogd
+  ansible.builtin.service:
+    name: syslogd
+    state: restarted
