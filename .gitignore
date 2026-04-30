@@ -1,3 +1,6 @@
 .claude/
 .claude.json
 roles/unifi/files/unifi-os-server.installer
+terraform/**/.terraform/
+terraform/**/*.tfstate
+terraform/**/*.tfstate.backup

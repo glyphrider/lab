@@ -52,7 +52,7 @@ Secrets are managed with ansible-vault. Encrypted files:
 To edit an encrypted file: `ansible-vault edit <file>`
 To encrypt a new file: `ansible-vault encrypt <file>`
 
-Available role tags: `system-setup`, `user-setup`, `bridge-networking`, `podman`, `podman-macvlan`, `pihole`, `nfs-media`, `va-api`, `jellyfin`, `virtualization`, `node-exporter`, `monitoring`, `unbound-container`, `rhel-vms`, `unifi`, `gateway-network`, `dhcpd`, `unbound`, `rpi-network`, `rhel-setup`, `ol-setup`
+Available role tags: `system-setup`, `user-setup`, `bridge-networking`, `podman`, `podman-macvlan`, `pihole`, `nfs-media`, `va-api`, `jellyfin`, `virtualization`, `node-exporter`, `monitoring`, `unbound-container`, `rhel-vms`, `unifi`, `gateway-network`, `gateway-services`, `dhcpd`, `unbound`, `rpi-network`, `rhel-setup`, `ol-setup`
 
 ## Architecture
 
