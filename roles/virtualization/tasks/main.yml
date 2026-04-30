@@ -44,6 +44,7 @@
     gpgkey: https://rpm.releases.hashicorp.com/gpg
     gpgcheck: true
     enabled: true
+    skip_if_unavailable: true
 
 - name: Install terraform
   ansible.builtin.dnf:
