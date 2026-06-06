@@ -6,6 +6,12 @@ resource "iosxe_interface_ethernet" "pihole2" {
   description = "PiHole2"
 }
 
+resource "iosxe_interface_ethernet" "lab" {
+  type        = "GigabitEthernet"
+  name        = "1/0/2"
+  description = "Lab"
+}
+
 resource "iosxe_interface_ethernet" "office_uplink" {
   type        = "GigabitEthernet"
   name        = "1/0/3"

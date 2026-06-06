@@ -6,6 +6,41 @@
       - podman-compose
     state: present
 
+- name: Create containers firewall zone
+  ansible.builtin.command: firewall-cmd --permanent --new-zone=containers
+  register: _zone_create
+  changed_when: _zone_create.rc == 0
+  failed_when: _zone_create.rc != 0 and 'NAME_CONFLICT' not in _zone_create.stderr
+
+- name: Configure containers zone
+  ansible.builtin.command: firewall-cmd --permanent --zone=containers {{ item }}
+  loop:
+    - --add-forward
+  notify: Reload firewalld
+
+- name: Assign jellyfin bridge to containers zone
+  ansible.builtin.command: >
+    firewall-cmd --permanent --zone=containers --add-interface=jellyfin-br0
+  register: _iface
+  changed_when: _iface.rc == 0
+  failed_when: _iface.rc != 0 and 'ZONE_ALREADY_SET' not in _iface.stderr
+  notify: Reload firewalld
+
+- name: Create containers-to-inet firewall policy
+  ansible.builtin.command: firewall-cmd --permanent --new-policy=containers-to-inet
+  register: _policy_create
+  changed_when: _policy_create.rc == 0
+  failed_when: _policy_create.rc != 0 and 'NAME_CONFLICT' not in _policy_create.stderr
+
+- name: Configure containers-to-inet policy
+  ansible.builtin.command: firewall-cmd --permanent --policy=containers-to-inet {{ item }}
+  loop:
+    - --add-ingress-zone=containers
+    - --add-egress-zone=FedoraServer
+    - --add-masquerade
+    - --set-target=ACCEPT
+  notify: Reload firewalld
+
 - name: Configure container registries
   ansible.builtin.copy:
     dest: /etc/containers/registries.conf.d/docker-io.conf

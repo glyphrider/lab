@@ -169,7 +169,8 @@
         jellyfin-internal:
           name: jellyfin-internal
           driver: bridge
-          internal: true
+          driver_opts:
+            com.docker.network.bridge.name: jellyfin-br0
           ipam:
             config:
               - subnet: 172.16.1.0/24

@@ -1,0 +1,139 @@
+conf t
+
+! System
+hostname switch
+ip domain-name marisol.home
+ip default-gateway 192.168.1.1
+ip name-server 192.168.1.5 192.168.1.251
+
+! NTP
+ntp server 192.168.1.1
+
+! Syslog
+logging host 192.168.1.1
+
+! VLANs
+vlan 2
+ name Marisol
+vlan 3
+ name Marisol-IOT
+vlan 4
+ name Marisol-Work
+vlan 5
+ name Kirkwood
+
+! Management SVI
+interface Vlan1
+ description Management
+ ip address 192.168.1.253 255.255.255.0
+ no shutdown
+
+! LAG member ports
+interface GigabitEthernet1/0/13
+ description Egress LAG (Port 1 of 4)
+ channel-group 1 mode active
+ switchport mode trunk
+ power inline never
+interface GigabitEthernet1/0/15
+ description Egress LAG (Port 2 of 4)
+ channel-group 1 mode active
+ switchport mode trunk
+ power inline never
+interface GigabitEthernet1/0/17
+ description Egress LAG (Port 3 of 4)
+ channel-group 1 mode active
+ switchport mode trunk
+ power inline never
+interface GigabitEthernet1/0/19
+ description Egress LAG (Port 4 of 4)
+ channel-group 1 mode active
+ switchport mode trunk
+ power inline never
+
+! Port-channel (gateway uplink)
+interface Port-channel1
+ description Gateway
+ switchport mode trunk
+
+! Trunk ports (non-LAG)
+interface GigabitEthernet1/0/1
+ description PiHole2
+ switchport mode trunk
+ power inline never
+interface GigabitEthernet1/0/2
+ description Lab
+ switchport mode trunk
+ power inline never
+interface GigabitEthernet1/0/3
+ description Office Uplink
+ switchport mode trunk
+ power inline never
+interface GigabitEthernet1/0/4
+ description TrueNAS Scale
+ switchport mode trunk
+ power inline never
+
+! AP ports (trunk + PoE)
+interface GigabitEthernet1/0/14
+ description Offices AP
+ switchport mode trunk
+ power inline static
+interface GigabitEthernet1/0/16
+ description Sunroom AP
+ switchport mode trunk
+ power inline static
+interface GigabitEthernet1/0/18
+ description Library AP
+ switchport mode trunk
+ power inline static
+interface GigabitEthernet1/0/20
+ description Cottingly AP
+ switchport mode trunk
+ power inline static
+
+! Access ports
+interface range GigabitEthernet1/0/25-28
+ switchport mode access
+ switchport access vlan 2
+interface range GigabitEthernet1/0/29-32
+ switchport mode access
+ switchport access vlan 3
+interface range GigabitEthernet1/0/33-36
+ switchport mode access
+ switchport access vlan 4
+
+! Users
+! Use 'secret' (not 'password') — stored as bcrypt, not reversible ciphertext
+! brian logs in at privilege 1; 'enable' + enable-password elevates to #
+username brian privilege 1 secret <login-password>
+enable secret <enable-password>
+
+! SSH
+crypto key generate rsa modulus 2048
+ip ssh version 2
+line vty 0 15
+ login local
+ transport input ssh
+
+! SSH public key
+! Strip 'ssh-rsa ' prefix and trailing comment — base64 body only
+! Split at 254-character boundary across the two key-string lines
+ip ssh pubkey-chain
+ username brian
+  key-string
+   <public-key-string-line-1>
+   <public-key-string-line-2>
+  exit
+ exit
+
+! Enable RESTCONF/NETCONF (required for Terraform)
+ip http secure-server
+restconf
+netconf-yang
+
+end
+
+! Verify SSH public key was accepted (IOS silently discards malformed keys)
+show running-config | section pubkey-chain
+
+write memory
