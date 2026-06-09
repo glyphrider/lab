@@ -63,13 +63,13 @@
     content: |
       [Unit]
       Description=PiHole Container Stack
-      After=network-online.target
-      Wants=network-online.target
+      After=NetworkManager-wait-online.service
+      Wants=NetworkManager-wait-online.service
 
       [Service]
       Type=oneshot
       RemainAfterExit=yes
-      ExecStart={{ pihole_compose_bin }} -f {{ pihole_compose_path }} up -d
+      ExecStart=/bin/sh -c '{{ pihole_compose_bin }} -f {{ pihole_compose_path }} down --remove-orphans 2>/dev/null; {{ pihole_compose_bin }} -f {{ pihole_compose_path }} up -d'
       ExecStop={{ pihole_compose_bin }} -f {{ pihole_compose_path }} down
 
       [Install]
@@ -88,6 +88,15 @@
     name: pihole
     state: restarted
   when: r_compose.changed
+
+- name: Wait for pihole containers to be running
+  ansible.builtin.command: podman inspect --format '{{ '{{' }}.State.Running{{ '}}' }}' {{ item.name }}
+  loop: "{{ pihole_instances }}"
+  register: _container_state
+  until: _container_state.stdout == 'true'
+  retries: 30
+  delay: 2
+  changed_when: false
 
 # ── First-run password ────────────────────────────────────────────────────────
 
