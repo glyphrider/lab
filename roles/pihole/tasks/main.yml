@@ -57,23 +57,11 @@
 # ── Systemd service ───────────────────────────────────────────────────────────
 
 - name: Deploy pihole systemd service
-  ansible.builtin.copy:
+  ansible.builtin.template:
+    src: pihole.service.j2
     dest: /etc/systemd/system/pihole.service
     mode: '0644'
-    content: |
-      [Unit]
-      Description=PiHole Container Stack
-      After=NetworkManager-wait-online.service
-      Wants=NetworkManager-wait-online.service
-
-      [Service]
-      Type=oneshot
-      RemainAfterExit=yes
-      ExecStart=/bin/sh -c '{{ pihole_compose_bin }} -f {{ pihole_compose_path }} down --remove-orphans 2>/dev/null; {{ pihole_compose_bin }} -f {{ pihole_compose_path }} up -d'
-      ExecStop={{ pihole_compose_bin }} -f {{ pihole_compose_path }} down
-
-      [Install]
-      WantedBy=multi-user.target
+  register: r_service
   notify: Reload systemd
 
 - name: Enable and start pihole service
@@ -83,11 +71,11 @@
     state: started
     daemon_reload: true
 
-- name: Restart pihole if compose file changed
+- name: Restart pihole if compose or service file changed
   ansible.builtin.systemd:
     name: pihole
     state: restarted
-  when: r_compose.changed
+  when: r_compose.changed or r_service.changed
 
 - name: Wait for pihole containers to be running
   ansible.builtin.command: podman inspect --format '{{ '{{' }}.State.Running{{ '}}' }}' {{ item.name }}

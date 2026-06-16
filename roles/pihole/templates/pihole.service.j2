@@ -1,0 +1,16 @@
+[Unit]
+Description=PiHole Container Stack
+After=NetworkManager-wait-online.service
+Wants=NetworkManager-wait-online.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+{% if pihole_network_type == 'bridge' %}
+ExecStartPre=/bin/sh -c 'for ip in {{ pihole_instances | map(attribute="ip") | join(" ") }}; do until ip -4 addr show | grep -q "$ip/"; do sleep 1; done; done'
+{% endif %}
+ExecStart=/bin/sh -c '{{ pihole_compose_bin }} -f {{ pihole_compose_path }} down --remove-orphans 2>/dev/null; {{ pihole_compose_bin }} -f {{ pihole_compose_path }} up -d'
+ExecStop={{ pihole_compose_bin }} -f {{ pihole_compose_path }} down
+
+[Install]
+WantedBy=multi-user.target
