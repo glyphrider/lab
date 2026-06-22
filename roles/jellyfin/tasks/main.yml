@@ -95,6 +95,18 @@
   ansible.builtin.command: restorecon -v {{ jellyfin_nginx_conf }}
   changed_when: false
 
+# ── Media directory SELinux context ───────────────────────────────────────────
+
+- name: Set SELinux file context policy for media directory
+  community.general.sefcontext:
+    target: /media
+    setype: container_file_t
+    state: present
+
+- name: Apply SELinux file context to media directory
+  ansible.builtin.command: restorecon -v /media
+  changed_when: false
+
 # ── Compose file ──────────────────────────────────────────────────────────────
 
 - name: Create compose directory

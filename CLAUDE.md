@@ -22,21 +22,21 @@ Ansible automation for a home lab consisting of managed hosts:
 
 ```bash
 # Full run
-ansible-playbook lab.yml --ask-vault-pass
-ansible-playbook gateway.yml --ask-vault-pass
-ansible-playbook pi.yml --ask-vault-pass
+ansible-playbook lab.yml
+ansible-playbook gateway.yml
+ansible-playbook pi.yml
 
 # Single role (all roles are tagged with their name)
-ansible-playbook lab.yml --tags pihole --ask-vault-pass
-ansible-playbook gateway.yml --tags unbound --ask-vault-pass
-ansible-playbook pi.yml --tags pihole --ask-vault-pass
+ansible-playbook lab.yml --tags pihole
+ansible-playbook gateway.yml --tags unbound
+ansible-playbook pi.yml --tags pihole
 
 # Provision RHEL/OL VMs (two steps — provision then configure)
-ansible-playbook lab.yml --tags rhel-vms --ask-vault-pass --limit lab
-ansible-playbook lab.yml --tags rhel-setup,ol-setup,node-exporter --ask-vault-pass --limit rhel,ol
+ansible-playbook lab.yml --tags rhel-vms --limit lab
+ansible-playbook lab.yml --tags rhel-setup,ol-setup,node-exporter --limit rhel,ol
 
 # Dry run
-ansible-playbook gateway.yml --check --ask-vault-pass
+ansible-playbook gateway.yml --check
 ```
 
 ## Secrets

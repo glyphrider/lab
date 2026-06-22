@@ -149,23 +149,23 @@ unbound  (split-horizon, recursive):
 ## Prerequisites
 
 - Ansible with `community.general` collection
-- A vault password for encrypted secrets
+- `pass` configured at `~/.ansible/vault_pass.sh` (vault password is supplied automatically via `ansible.cfg`)
 - SSH access to all hosts
 
 ## Usage
 
 ```bash
 # Run full configuration
-ansible-playbook lab.yml --ask-vault-pass
-ansible-playbook gateway.yml --ask-vault-pass
-ansible-playbook pi.yml --ask-vault-pass
+ansible-playbook lab.yml
+ansible-playbook gateway.yml
+ansible-playbook pi.yml
 
 # Run a single role
-ansible-playbook lab.yml --tags <role> --ask-vault-pass
-ansible-playbook pi.yml --tags <role> --ask-vault-pass
+ansible-playbook lab.yml --tags <role>
+ansible-playbook pi.yml --tags <role>
 
 # Dry run
-ansible-playbook lab.yml --check --ask-vault-pass
+ansible-playbook lab.yml --check
 ```
 
 Available tags match role names: `system-setup`, `user-setup`, `bridge-networking`, `podman`, `podman-macvlan`, `pihole`, `nfs-media`, `va-api`, `jellyfin`, `virtualization`, `unifi`, `gateway-network`, `dhcpd`, `unbound`, `unbound-container`, `rpi-network`, `rhel-vms`, `rhel-setup`, `ol-setup`.

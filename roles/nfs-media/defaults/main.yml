@@ -6,3 +6,5 @@ nfs_mounts:
     path: /media/movies
   - src: "{{ nfs_server }}:/mnt/tank/media/shows"
     path: /media/shows
+  - src: "{{ nfs_server }}:/mnt/tank/media/home-movies"
+    path: /media/home-movies
