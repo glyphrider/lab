@@ -45,6 +45,7 @@ dhcpd_subnets:
       - { name: jellyfin, mac: "00:16:3E:91:31:07",  ip: 10.47.2.6  }
       - { name: piBSD,    mac: "dc:a6:32:d0:9c:a6",  ip: 10.47.2.10 }
       - { name: pinetbsd, mac: "dc:a6:32:d0:9c:a7",  ip: 10.47.2.17 }
+      - { name: epson,    mac: "d4:80:8b:a7:e1:cc",  ip: 10.47.2.18 }
 
   - subnet:  10.47.3.0
     netmask: 255.255.255.0
