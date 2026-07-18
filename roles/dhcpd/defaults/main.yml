@@ -34,6 +34,7 @@ dhcpd_subnets:
       - { name: noble,    mac: "52:54:00:47:71:13", ip: 192.168.1.44 }
       - { name: torrent,  mac: "52:54:00:70:1f:35", ip: 192.168.1.63 }
       - { name: pihole2,  mac: "dc:a6:32:d0:9c:a6", ip: 192.168.1.251 }
+      - { name: beast,    mac: "d6:07:e1:c7:1b:f6", ip: 192.168.1.21  }
 
   - subnet:  10.47.2.0
     netmask: 255.255.255.0
@@ -46,6 +47,7 @@ dhcpd_subnets:
       - { name: piBSD,    mac: "dc:a6:32:d0:9c:a6",  ip: 10.47.2.10 }
       - { name: pinetbsd, mac: "dc:a6:32:d0:9c:a7",  ip: 10.47.2.17 }
       - { name: epson,    mac: "d4:80:8b:a7:e1:cc",  ip: 10.47.2.18 }
+      - { name: beast,    mac: "52:8f:0f:7b:9b:b0",  ip: 10.47.2.21 }
 
   - subnet:  10.47.3.0
     netmask: 255.255.255.0
