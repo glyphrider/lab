@@ -123,6 +123,12 @@ The `virtualization` role runs on the lab server and uses Terraform (`dmacvicar/
 
 The `unifi` role then runs against the VM directly to install UniFi OS Server.
 
+### Jellyfin
+
+The `jellyfin` role runs on the lab server. `jellyfin-nginx` (TLS termination) has a macvlan IP on `marisol0` (`jellyfin_ip`, 10.47.2.6) plus a private `jellyfin-internal` bridge network (172.16.1.0/24); the `jellyfin` container itself only sits on `jellyfin-internal` (172.16.1.2) and is reached via nginx's `proxy_pass`. The `podman` role puts the `jellyfin-br0` bridge interface in its own firewalld zone (`containers`) with a `containers-to-inet` policy so the bridge's containers get masqueraded internet access.
+
+`jellyfin-internal` is IPv4-only — no AAAA/IPv6 route. Because metadata providers (TMDb, OMDb, etc.) are dual-stack, the jellyfin container needs `DOTNET_SYSTEM_NET_DISABLEIPV6=1` set; otherwise .NET's Happy Eyeballs connection logic races the unreachable IPv6 address and metadata lookups fail with `SocketException: Resource temporarily unavailable` instead of falling back to the working IPv4 path.
+
 ### CA certificate
 
 `files/marisol.crt` (playbook-level) is the shared internal CA cert. Roles reference it as `src: marisol.crt` (copy module) or `lookup('file', playbook_dir + '/files/marisol.crt')` (pihole). It is deployed to the system trust store on Fedora (`update-ca-trust`), Ubuntu (`update-ca-certificates`), and Raspberry Pi OS (`update-ca-certificates`).

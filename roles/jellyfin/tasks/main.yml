@@ -157,6 +157,10 @@
               ipv4_address: {{ jellyfin_internal_ip }}
           environment:
             - TZ={{ jellyfin_tz }}
+            # jellyfin-internal is IPv4-only (no route/AAAA); metadata providers
+            # (TMDb, OMDb) are dual-stack, so .NET's Happy Eyeballs races the
+            # unreachable IPv6 address and fails instead of falling back to IPv4.
+            - DOTNET_SYSTEM_NET_DISABLEIPV6=1
           volumes:
             - config:/config
             - cache:/cache
