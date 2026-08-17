@@ -155,6 +155,8 @@
           networks:
             jellyfin-internal:
               ipv4_address: {{ jellyfin_internal_ip }}
+          dns:
+            - {{ jellyfin_dns }}
           environment:
             - TZ={{ jellyfin_tz }}
             # jellyfin-internal is IPv4-only (no route/AAAA); metadata providers
