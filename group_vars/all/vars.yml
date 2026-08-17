@@ -46,6 +46,10 @@ unbound_views:
       - { name: jellyfin, ip: 10.47.2.6   }
       - { name: pihole2,  ip: 10.47.2.251 }
       - { name: beast,    ip: 10.47.2.21  }
+      - { name: et8550,   ip: 10.47.2.18 }
+      - { name: et2803,   ip: 10.47.2.19 }
+      - { name: et2903,   ip: 10.47.2.20 }
+
 
   - name: iot
     clients:
