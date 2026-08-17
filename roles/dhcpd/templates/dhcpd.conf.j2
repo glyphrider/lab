@@ -4,11 +4,13 @@ max-lease-time {{ dhcpd_max_lease_time }};
 option domain-name "{{ dhcpd_domain_name }}";
 
 {% for subnet in dhcpd_subnets %}
+{% set view = unbound_views | selectattr('name', 'equalto', subnet.view) | first %}
+{% set hosts = (view.records | selectattr('mac', 'defined') | list) + (dhcp_only_hosts[subnet.view] | default([])) %}
 subnet {{ subnet.subnet }} netmask {{ subnet.netmask }} {
 	range {{ subnet.range[0] }} {{ subnet.range[1] }};
 	option routers {{ subnet.routers }};
 	option domain-name-servers {{ subnet.dns | join(', ') }};
-{% for host in subnet.hosts | default([]) %}
+{% for host in hosts %}
 	host {{ host.name }} {
 		hardware ethernet {{ host.mac }};
 		fixed-address {{ host.ip }};
