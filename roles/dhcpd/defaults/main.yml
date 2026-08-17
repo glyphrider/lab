@@ -46,7 +46,9 @@ dhcpd_subnets:
       - { name: jellyfin, mac: "00:16:3E:91:31:07",  ip: 10.47.2.6  }
       - { name: piBSD,    mac: "dc:a6:32:d0:9c:a6",  ip: 10.47.2.10 }
       - { name: pinetbsd, mac: "dc:a6:32:d0:9c:a7",  ip: 10.47.2.17 }
-      - { name: epson,    mac: "d4:80:8b:a7:e1:cc",  ip: 10.47.2.18 }
+      - { name: et8550,    mac: "d4:80:8b:a7:e1:cc",  ip: 10.47.2.18 }
+      - { name: et2803,    mac: "a4:d7:3c:26:bc:d2",  ip: 10.47.2.19 }
+      - { name: et2903,    mac: "58:05:d9:59:ea:58",  ip: 10.47.2.20 }
       - { name: beast,    mac: "52:8f:0f:7b:9b:b0",  ip: 10.47.2.21 }
 
   - subnet:  10.47.3.0
