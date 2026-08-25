@@ -49,7 +49,7 @@ unbound_views:
       - { name: jellyfin, ip: 10.47.2.6,   mac: "00:16:3E:91:31:07" }
       - { name: pihole2,  ip: 10.47.2.251 }
       - { name: beast,    ip: 10.47.2.21,  mac: "52:8f:0f:7b:9b:b0" }
-      - { name: et8550,   ip: 10.47.2.18,  mac: "64:c6:d2:5b:94:63" }
+      - { name: et8550,   ip: 10.47.2.18,  mac: "d4:80:8b:a8:06:de" }
       - { name: et2803,   ip: 10.47.2.19,  mac: "a4:d7:3c:26:bc:d2" }
       - { name: et2903,   ip: 10.47.2.20,  mac: "58:05:d9:59:ea:58" }
 
