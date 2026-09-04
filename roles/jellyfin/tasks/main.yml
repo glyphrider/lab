@@ -82,6 +82,11 @@
 
               proxy_read_timeout 600s;
               proxy_send_timeout 600s;
+
+              # Stream HLS segments straight through instead of buffering
+              # them to disk (nginx's default proxy_buffers is far smaller
+              # than a video segment, adding latency to every request).
+              proxy_buffering off;
           }
       }
 
