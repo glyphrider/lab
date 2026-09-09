@@ -2,6 +2,10 @@
 
 Ansible automation for a home lab network.
 
+Implementation-level detail for individual roles (DNS split-horizon, pihole's two
+deployment modes, VM provisioning, jellyfin's IPv6 quirk, etc.) lives in
+[`docs/architecture.md`](docs/architecture.md) rather than here.
+
 ## Hosts
 
 | Host | IP | OS | Role |
@@ -9,9 +13,12 @@ Ansible automation for a home lab network.
 | lab | 192.168.1.3 | Fedora 43 | Primary server — containers, VMs, NFS client |
 | gateway | 192.168.1.1 | OpenBSD | Router — DHCP, DNS, firewall |
 | unifi | 192.168.1.2 | Ubuntu 24.04 VM | UniFi OS Server |
-| nas | 192.168.1.4 | TrueNAS Scale | NFS file server _(not automated)_ |
-| switch | 192.168.1.253 | Cisco Catalyst WS-C3650-48PS | 48-port PoE switch _(not automated)_ |
 | pihole2 | 192.168.1.251 | Raspberry Pi OS (Bookworm) | Secondary DNS — pihole redundancy |
+| rhel8 | 192.168.1.35 | RHEL 8 KVM VM | Subscribed RHEL host |
+| rhel9 | 192.168.1.36 | RHEL 9 KVM VM | Subscribed RHEL host |
+| ol9 | 192.168.1.39 | Oracle Linux 9 KVM VM | Unsubscribed RHEL-compatible host |
+| nas | 192.168.1.4 | TrueNAS Scale | NFS file server _(not automated)_ |
+| switch | 192.168.1.253 | Cisco Catalyst WS-C3650-48PS | 48-port PoE switch — managed via Terraform, not Ansible (see `terraform/switch/README.md`) |
 
 ## Networks
 
@@ -149,8 +156,11 @@ unbound  (split-horizon, recursive):
 ## Prerequisites
 
 - Ansible with `community.general` collection
-- `pass` configured at `~/.ansible/vault_pass.sh` (vault password is supplied automatically via `ansible.cfg`)
+- `pass` and `gpg`, with the private key for this repo's `.password-store/.gpg-id` imported — `vault_pass.sh` scopes `pass` to that store (see [Secrets](#secrets)) so the vault password is supplied automatically via `ansible.cfg`
 - SSH access to all hosts
+
+Alternatively, run `nix develop` to drop into a shell with Ansible, Terraform, and the
+other tools this repo needs already on `PATH` (see `flake.nix`).
 
 ## Usage
 
@@ -168,7 +178,7 @@ ansible-playbook pi.yml --tags <role>
 ansible-playbook lab.yml --check
 ```
 
-Available tags match role names: `system-setup`, `user-setup`, `bridge-networking`, `podman`, `podman-macvlan`, `pihole`, `nfs-media`, `va-api`, `jellyfin`, `virtualization`, `unifi`, `gateway-network`, `dhcpd`, `unbound`, `unbound-container`, `rpi-network`, `rhel-vms`, `rhel-setup`, `ol-setup`.
+Available tags match role names: `system-setup`, `user-setup`, `bridge-networking`, `podman`, `podman-macvlan`, `pihole`, `nfs-media`, `va-api`, `jellyfin`, `virtualization`, `node-exporter`, `monitoring`, `unbound-container`, `rhel-vms`, `unifi`, `gateway-network`, `gateway-services`, `dhcpd`, `unbound`, `rpi-network`, `rhel-setup`, `ol-setup`.
 
 ## Updating UniFi OS Server
 
@@ -202,6 +212,7 @@ Secrets are managed with ansible-vault:
 ```bash
 # Edit vault
 ansible-vault edit group_vars/lab/vault.yml
+ansible-vault edit group_vars/rhel/vault.yml
 ansible-vault edit group_vars/pi/vault.yml
 
 # Encrypt a new file
