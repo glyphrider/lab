@@ -138,6 +138,9 @@
           networks:
             lab-marisol0-macvlan:
               ipv4_address: {{ jellyfin_ip }}
+            lab-management0-macvlan:
+              ipv4_address: {{ jellyfin_management_ip }}
+              mac_address: {{ jellyfin_management_mac }}
             jellyfin-internal:
           dns:
             - {{ jellyfin_dns }}
@@ -188,6 +191,8 @@
 
       networks:
         lab-marisol0-macvlan:
+          external: true
+        lab-management0-macvlan:
           external: true
         jellyfin-internal:
           name: jellyfin-internal

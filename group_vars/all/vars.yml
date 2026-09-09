@@ -36,7 +36,7 @@ unbound_views:
       - { name: switch,     ip: 192.168.1.253 }
       - { name: pihole2,    ip: 192.168.1.251, mac: "dc:a6:32:d0:9c:a6" }
       - { name: beast,      ip: 192.168.1.21,  mac: "d6:07:e1:c7:1b:f6" }
-      - { name: jellyfin,   ip: 10.47.2.6     } # cross-vlan alias; reservation lives on the marisol record
+      - { name: jellyfin,   ip: 192.168.1.6,   mac: "02:42:c0:a8:01:06" }
       - { name: grafana,    ip: 192.168.1.7   }
       - { name: prometheus, ip: 192.168.1.8   }
 
