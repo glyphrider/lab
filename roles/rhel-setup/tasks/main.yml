@@ -6,6 +6,7 @@
     --password='{{ rhsm_password }}'
     --auto-attach
   register: _rhsm
+  no_log: true
   failed_when:
     - _rhsm.rc != 0
     - "'already registered' not in (_rhsm.stdout | default('') + _rhsm.stderr | default(''))"
