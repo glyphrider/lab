@@ -5,3 +5,4 @@ roles/unifi/files/unifi-os-server.downloads
 terraform/**/.terraform/
 terraform/**/*.tfstate
 terraform/**/*.tfstate.backup
+terraform/**/*.tfstate.*.backup
