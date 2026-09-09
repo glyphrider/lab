@@ -25,21 +25,16 @@
     state: present
     update_cache: true
 
-- name: Check if UniFi OS Server is already installed
-  ansible.builtin.stat:
-    path: /var/lib/uosserver
-  register: _unifi_installed
-
 - name: Copy UniFi OS Server installer
   ansible.builtin.copy:
     src: "{{ unifi_os_installer }}"
-    dest: "/tmp/{{ unifi_os_installer }}"
+    dest: "/root/{{ unifi_os_installer }}"
     mode: '0755'
-  when: not _unifi_installed.stat.exists
+  register: _unifi_installer_copy
 
 - name: Run UniFi OS Server installer
-  ansible.builtin.shell: "echo 'y' | /tmp/{{ unifi_os_installer }}"
-  when: not _unifi_installed.stat.exists
+  ansible.builtin.shell: "echo 'y' | /root/{{ unifi_os_installer }}"
+  when: _unifi_installer_copy.changed
 
 # ── Certificate ───────────────────────────────────────────────────────────────
 

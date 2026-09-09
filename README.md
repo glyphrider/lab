@@ -170,6 +170,31 @@ ansible-playbook lab.yml --check
 
 Available tags match role names: `system-setup`, `user-setup`, `bridge-networking`, `podman`, `podman-macvlan`, `pihole`, `nfs-media`, `va-api`, `jellyfin`, `virtualization`, `unifi`, `gateway-network`, `dhcpd`, `unbound`, `unbound-container`, `rpi-network`, `rhel-vms`, `rhel-setup`, `ol-setup`.
 
+## Updating UniFi OS Server
+
+The installer bundle lives under `roles/unifi/files/`, managed as a symlink so old
+downloads can be kept around without renaming anything:
+
+- `roles/unifi/files/unifi-os-server.downloads/` — versioned installer downloads
+- `roles/unifi/files/unifi-os-server.installer` — symlink to the version currently in use
+
+Neither the symlink nor the downloads directory is committed to git (both are
+gitignored) — they're large binaries that change per-install. On a fresh clone,
+download the latest UniFi OS Server installer for Linux from
+[ui.com](https://ui.com) into `roles/unifi/files/unifi-os-server.downloads/` and
+create the `unifi-os-server.installer` symlink pointing at it before running the
+`unifi` role for the first time.
+
+To upgrade:
+
+1. Download the new UniFi OS Server installer into `roles/unifi/files/unifi-os-server.downloads/`.
+2. Repoint the `unifi-os-server.installer` symlink at the new file.
+3. Run `ansible-playbook lab.yml --tags unifi`.
+
+The `unifi` role copies the installer to the VM and only re-runs it when the file's
+checksum differs from what's already there, so this is safe to run repeatedly —
+it's a no-op unless the symlink points at a new/different installer.
+
 ## Secrets
 
 Secrets are managed with ansible-vault:
