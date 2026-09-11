@@ -17,6 +17,12 @@
   ansible.builtin.command: firewall-cmd --permanent --zone=containers {{ item }}
   loop:
     - --add-forward
+    # aardvark-dns binds to the bridge gateway IP as a host process, so a
+    # container's DNS query is host-terminated INPUT on this zone (not
+    # forwarded traffic covered by containers-to-inet) and gets rejected
+    # without this — breaking metadata lookups for anything needing external
+    # DNS resolution (e.g. jellyfin's TMDb/OMDb providers).
+    - --add-service=dns
   notify: Reload firewalld
   when: ansible_facts['os_family'] == 'RedHat'
 
