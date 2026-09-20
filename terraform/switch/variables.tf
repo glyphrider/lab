@@ -1,6 +1,6 @@
 variable "switch_username" {
   type    = string
-  default = "admin"
+  default = "brian"
 }
 
 variable "switch_password" {

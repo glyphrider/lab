@@ -7,8 +7,8 @@ Terraform provider using NETCONF/RESTCONF.
 ## What is managed
 
 - **VLANs** — 2 (Marisol), 3 (Marisol-IOT), 4 (Marisol-Work), 5 (Kirkwood)
-- **Interface descriptions** — all active trunk and LAG member ports (Gi1/0/1 PiHole2, Gi1/0/2 Lab, Gi1/0/3 Office Uplink, Gi1/0/4 TrueNAS, Gi1/0/13–19 LAG, Gi1/0/14–20 APs)
-- **LAG membership** — Gi1/0/13, 15, 17, 19 as LACP active members of Port-channel1
+- **Interface descriptions** — all active trunk, access and LAG member ports (Gi1/0/1 PiHole2, Gi1/0/2 Lab, Gi1/0/3 Office Uplink, Gi1/0/4 TrueNAS, Gi1/0/5–6 Proxmox, Gi1/0/13–16 LAG, Gi1/0/21–24 APs)
+- **LAG membership** — Gi1/0/13–16 as LACP active members of Port-channel1
 - **System** — hostname, domain name, default gateway
 - **NTP** — gateway (192.168.1.1)
 - **Syslog** — gateway (192.168.1.1)
@@ -21,6 +21,15 @@ Terraform provider using NETCONF/RESTCONF.
 - **PoE** (`power inline never/static`) — not in the provider schema. Configure manually.
 - **DNS name servers** (`ip name-server`) — YANG path incompatible with IOS-XE 16.12.
   Configure manually: `ip name-server 192.168.1.5 192.168.1.251`
+- **VLANs need VTP transparent mode** — in VTP server mode (the IOS default) VLANs
+  live in `vlan.dat`, not the running config, and the native YANG model returns no
+  `vlan-list`, so Terraform can't read them (`terraform import` reports "non-existent
+  remote object"). Set `vtp mode transparent`; see the prerequisites below.
+- **Don't `terraform import` these resources** — on import the provider fills every
+  boolean attribute with `false`, but the config leaves them null, so `plan` shows ~60
+  `false -> null` changes per interface. Applying them fails on 16.12 with
+  `unknown-element` errors (`vpn-id`, `recursive`, `periodic`, `count`). Adopt existing
+  switch config with `apply` instead — see [State](#state).
 
 ## Manual configuration (not managed by Terraform)
 
@@ -30,7 +39,7 @@ These must be configured by hand due to provider/IOS-XE 16.12 limitations.
 
 ```
 conf t
-interface range GigabitEthernet1/0/1-4, GigabitEthernet1/0/13-20, Port-channel1
+interface range GigabitEthernet1/0/1-4, GigabitEthernet1/0/13-16, GigabitEthernet1/0/21-24, Port-channel1
  switchport mode trunk
 end
 ```
@@ -41,6 +50,15 @@ end
 
 ```
 conf t
+! Proxmox: one NIC per VLAN, separate cables
+interface GigabitEthernet1/0/5
+ switchport mode access
+ switchport access vlan 1
+
+interface GigabitEthernet1/0/6
+ switchport mode access
+ switchport access vlan 2
+
 interface range GigabitEthernet1/0/25-28
  switchport mode access
  switchport access vlan 2
@@ -60,11 +78,11 @@ end
 ```
 conf t
 ! Disable PoE on non-AP trunk ports and LAG members
-interface range GigabitEthernet1/0/1-4, GigabitEthernet1/0/13, GigabitEthernet1/0/15, GigabitEthernet1/0/17, GigabitEthernet1/0/19
+interface range GigabitEthernet1/0/1-4, GigabitEthernet1/0/13-16
  power inline never
 
 ! Enable PoE on AP ports
-interface range GigabitEthernet1/0/14, GigabitEthernet1/0/16, GigabitEthernet1/0/18, GigabitEthernet1/0/20
+interface range GigabitEthernet1/0/21-24
  power inline static
 end
 ```
@@ -72,11 +90,11 @@ end
 ### Users and SSH access
 
 **1. Create the local user and set the enable secret.**
-The user is created at privilege 1 (unprivileged). `enable` will prompt for the enable secret to reach the `#` prompt. Use `secret` (not `password`) for both — it stores a bcrypt hash rather than reversible ciphertext.
+The user is created at privilege 15: Terraform logs in as this user over NETCONF/RESTCONF, and IOS-XE expects privilege 15 for both. Use `secret` (not `password`) for both the user and the enable secret — it stores a hash rather than reversible ciphertext.
 
 ```
 conf t
-username brian privilege 1 secret <login-password>
+username brian privilege 15 secret <login-password>
 enable secret <enable-password>
 end
 ```
@@ -138,31 +156,55 @@ netconf-yang
 ! Set DNS servers (not manageable via Terraform on IOS-XE 16.12)
 ip name-server 192.168.1.5 192.168.1.251
 
+! Keep VLANs in the running config so Terraform can see them (default is
+! server mode, which keeps them in vlan.dat only)
+vtp mode transparent
+
 ! Save config
 write memory
 ```
 
-Verify RESTCONF is working:
+Verify RESTCONF is working (prompts for the password; expect `200 OK`):
 ```bash
-curl -k -u admin:password https://192.168.1.253/restconf/data/Cisco-IOS-XE-native:native/hostname
+curl -ksSi -u brian https://192.168.1.253/restconf/data/Cisco-IOS-XE-native:native/hostname \
+  -H 'Accept: application/yang-data+json'
 ```
 
 ## Running Terraform
 
+The login is the `brian` account (privilege 15). The username defaults to `brian`;
+set the password without echoing it, so it stays out of shell history:
+
 ```bash
 cd terraform/switch
+read -rs TF_VAR_switch_password; export TF_VAR_switch_password
 terraform init
-terraform plan  -var="switch_password=yourpassword"
-terraform apply -var="switch_password=yourpassword"
-```
-
-The password can also be set via environment variable to avoid the prompt:
-```bash
-export TF_VAR_switch_password=yourpassword
+terraform plan
 terraform apply
 ```
 
 ## State
 
-Terraform state is local (`terraform.tfstate`). Not committed to git —
-`*.tfstate*` should be in `.gitignore`.
+Terraform state is local (`terraform.tfstate`). Not committed to git — state files,
+backups and saved plans (`tfplan`, which embeds the switch password) are in `.gitignore`.
+
+### Rebuilding state after loss
+
+Adopt the existing switch config with `apply`, not `terraform import` (see the
+limitations above). A create sends only the attributes set in the `.tf` files, as a
+merge onto config that already matches, so it's a no-op on the switch.
+
+1. Check the config actually matches the switch before creating anything — a create
+   *adds* whatever the `.tf` files say, so drift becomes a real change. In particular
+   compare `trunks.tf` with `show etherchannel summary` (LAG members) and
+   `show interfaces status` (descriptions, port roles).
+2. Confirm VTP is transparent (`show vtp status`) and Terraform can log in
+   (`TF_VAR_switch_username` / `TF_VAR_switch_password`).
+3. Read `terraform plan` — it should be all `create`, with only `type`, `name` and
+   the attributes you set. Then apply in small `-target` batches, LAG members first
+   and one at a time, checking `show etherchannel summary` between them.
+4. Run `terraform plan` again; expect `No changes`.
+
+If a resource's port (`name`) changes in the config, remove it from state first
+(`terraform state rm <addr>`): otherwise the provider plans a replace, which deletes
+the old port's config.

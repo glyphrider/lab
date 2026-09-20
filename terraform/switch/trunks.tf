@@ -24,60 +24,73 @@ resource "iosxe_interface_ethernet" "truenas" {
   description = "TrueNAS Scale"
 }
 
-resource "iosxe_interface_ethernet" "egress_lag_1" {
-  type                = "GigabitEthernet"
-  name                = "1/0/13"
-  description         = "Egress LAG (Port 1 of 4)"
-  channel_group_number = 1
-  channel_group_mode  = "active"
+resource "iosxe_interface_ethernet" "proxmox_mgmt" {
+  type        = "GigabitEthernet"
+  name        = "1/0/5"
+  description = "Proxmox (management)"
 }
 
-resource "iosxe_interface_ethernet" "offices_ap" {
+resource "iosxe_interface_ethernet" "proxmox_marisol" {
   type        = "GigabitEthernet"
-  name        = "1/0/14"
-  description = "Offices AP"
+  name        = "1/0/6"
+  description = "Proxmox (Marisol)"
+}
+
+resource "iosxe_interface_ethernet" "egress_lag_1" {
+  type                 = "GigabitEthernet"
+  name                 = "1/0/13"
+  description          = "Egress LAG (Port 1 of 4)"
+  channel_group_number = 1
+  channel_group_mode   = "active"
 }
 
 resource "iosxe_interface_ethernet" "egress_lag_2" {
-  type                = "GigabitEthernet"
-  name                = "1/0/15"
-  description         = "Egress LAG (Port 2 of 4)"
+  type                 = "GigabitEthernet"
+  name                 = "1/0/14"
+  description          = "Egress LAG (Port 2 of 4)"
   channel_group_number = 1
-  channel_group_mode  = "active"
-}
-
-resource "iosxe_interface_ethernet" "sunroom_ap" {
-  type        = "GigabitEthernet"
-  name        = "1/0/16"
-  description = "Sunroom AP"
+  channel_group_mode   = "active"
 }
 
 resource "iosxe_interface_ethernet" "egress_lag_3" {
-  type                = "GigabitEthernet"
-  name                = "1/0/17"
-  description         = "Egress LAG (Port 3 of 4)"
+  type                 = "GigabitEthernet"
+  name                 = "1/0/15"
+  description          = "Egress LAG (Port 3 of 4)"
   channel_group_number = 1
-  channel_group_mode  = "active"
+  channel_group_mode   = "active"
+}
+
+resource "iosxe_interface_ethernet" "egress_lag_4" {
+  type                 = "GigabitEthernet"
+  name                 = "1/0/16"
+  description          = "Egress LAG (Port 4 of 4)"
+  channel_group_number = 1
+  channel_group_mode   = "active"
+}
+
+# AP ports; descriptions match the labels already on the switch.
+resource "iosxe_interface_ethernet" "sunroom_ap" {
+  type        = "GigabitEthernet"
+  name        = "1/0/21"
+  description = "Sunroom"
 }
 
 resource "iosxe_interface_ethernet" "library_ap" {
   type        = "GigabitEthernet"
-  name        = "1/0/18"
-  description = "Library AP"
+  name        = "1/0/22"
+  description = "Library"
 }
 
-resource "iosxe_interface_ethernet" "egress_lag_4" {
-  type                = "GigabitEthernet"
-  name                = "1/0/19"
-  description         = "Egress LAG (Port 4 of 4)"
-  channel_group_number = 1
-  channel_group_mode  = "active"
+resource "iosxe_interface_ethernet" "offices_ap" {
+  type        = "GigabitEthernet"
+  name        = "1/0/23"
+  description = "Office"
 }
 
 resource "iosxe_interface_ethernet" "cottingly_ap" {
   type        = "GigabitEthernet"
-  name        = "1/0/20"
-  description = "Cottingly AP"
+  name        = "1/0/24"
+  description = "Cottingly"
 }
 
 resource "iosxe_interface_port_channel" "egress" {
