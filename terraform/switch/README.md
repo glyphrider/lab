@@ -87,6 +87,20 @@ interface range GigabitEthernet1/0/21-24
 end
 ```
 
+### Spanning tree (PortFast on the lab port)
+
+The switch runs rapid-pvst with PortFast off by default. The lab server's Linux bridges have STP disabled (`stp=false` in the `bridge-networking` role), so they never answer the switch's rapid-PVST handshake and the port fell back to the 30s listening/learning timers after every lab reboot. During that window containers on `lab` couldn't reach the gateway's DNS (pihole's NTP lookup failed at startup and retried 10 minutes later), and `lab` was unreachable for ~30s after its link came up.
+
+```
+conf t
+interface GigabitEthernet1/0/2
+ spanning-tree portfast trunk
+end
+write memory
+```
+
+Only safe because `Gi1/0/2` is `lab`'s single uplink: PortFast on a port that can bridge back into the switch risks a loop. Verify with `show spanning-tree interface Gi1/0/2 portfast`. Other host-facing trunk ports (`Gi1/0/1` PiHole2, `Gi1/0/4` TrueNAS) still have the delay after their hosts reboot.
+
 ### Users and SSH access
 
 **1. Create the local user and set the enable secret.**
