@@ -97,13 +97,33 @@ interface GigabitEthernet1/0/2
  spanning-tree portfast trunk
 interface GigabitEthernet1/0/1
  spanning-tree portfast trunk
+interface GigabitEthernet1/0/4
+ spanning-tree portfast trunk
 end
 write memory
 ```
 
-`Gi1/0/2` is `lab` and `Gi1/0/1` is PiHole2. Only safe because each is a single host's uplink: PortFast on a port that can bridge back into the switch risks a loop. Verify with `show spanning-tree interface Gi1/0/2 portfast`. After enabling it on `Gi1/0/2`, the piholes on `lab` resolved and synced NTP on their first attempt at startup; on `Gi1/0/1`, SSH to the Pi came back at 25s of uptime instead of ~45s and pihole's startup DNS lookups succeeded. `Gi1/0/4` (TrueNAS) still has the delay after the NAS reboots.
+`Gi1/0/2` is `lab`, `Gi1/0/1` is PiHole2 and `Gi1/0/4` is TrueNAS. Only safe because each is a single host's uplink: PortFast on a port that can bridge back into the switch risks a loop. Verify with `show spanning-tree interface Gi1/0/2 portfast`. After enabling it on `Gi1/0/2`, the piholes on `lab` resolved and synced NTP on their first attempt at startup; on `Gi1/0/1`, SSH to the Pi came back at 25s of uptime instead of ~45s and pihole's startup DNS lookups succeeded. `Gi1/0/4` (TrueNAS) was enabled the same way but its effect after a NAS reboot hasn't been measured.
 
 The Pi has no RTC, so its clock is stepped by `systemd-timesyncd` ~70s after boot; a pihole whose NTP samples straddle that step logs `Standard deviation of time offset is too large` and retries 10 minutes later. Harmless (DNS is unaffected), and separate from the network delay above.
+
+### Trunk allowed VLANs (TrueNAS)
+
+The NAS is deliberately reachable only on VLANs 1 (management) and 2 (Marisol), and must not be reachable from VLANs 3–5. It has interfaces on VLANs 1 and 2 only, so hosts on those VLANs reach it directly at layer 2 (`192.168.1.4` on VLAN 1). The gateway's `pf.conf` blocks routing between VLANs, so there is no routed path to it either. Restricting the trunk makes the rule switch-enforced: even if a NAS interface were ever added on VLAN 3, 4 or 5, the switch would drop those frames.
+
+```
+conf t
+interface GigabitEthernet1/0/4
+ switchport trunk allowed vlan 1,2
+end
+write memory
+```
+
+Keep VLAN 1: it's the native VLAN and carries the NAS's management address. Use the replace form above, not `allowed vlan add`, which would leave the port unrestricted. Verify with `show interfaces trunk` (`Gi1/0/4` should show `1-2`). All other trunks are left at the default allow-all.
+
+### Manual settings are invisible to Terraform
+
+PortFast and trunk allowed VLANs are not in the `.tf` files, and the provider ignores attributes that aren't configured, so these hand-applied settings don't show up as drift and `terraform apply` won't remove them (`terraform plan` reports `No changes` with all of the above applied). After any manual switch edit, run `terraform plan` and expect `No changes`.
 
 ### Users and SSH access
 
