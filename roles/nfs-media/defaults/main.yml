@@ -1,5 +1,15 @@
 ---
-nfs_server: nas.marisol.home
+# IP, not nas.marisol.home: DNS for the marisol view is served by containers on
+# this host, which start after the fstab mounts at boot, so a hostname here
+# fails to resolve and the mounts never come up.
+nfs_server: 192.168.1.4
+
+# Mounted on demand via systemd automount, so a NAS problem never blocks boot
+# or the host. A failed access errors after nfs_mount_timeout seconds, and soft
+# mounts with a 5s timeo (x3 retrans) make I/O on an established mount fail
+# rather than hang.
+nfs_mount_timeout: 30
+nfs_mount_opts: "soft,noatime,timeo=50,retrans=3,_netdev,nofail,x-systemd.automount,x-systemd.mount-timeout={{ nfs_mount_timeout }}"
 
 nfs_mounts:
   - src: "{{ nfs_server }}:/mnt/tank/media/movies"

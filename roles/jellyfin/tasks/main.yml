@@ -176,9 +176,14 @@
           volumes:
             - config:/config
             - cache:/cache
+            # rslave: /media/* are systemd automounts triggered after the
+            # container starts; with the default private propagation the
+            # container never sees the NFS mount made on top of the autofs.
             - type: bind
               source: /media
               target: /media
+              bind:
+                propagation: rslave
           devices:
             - /dev/dri/renderD128:/dev/dri/renderD128
           group_add:
@@ -215,7 +220,7 @@
     content: |
       [Unit]
       Description=Jellyfin Media Server
-      After=network-online.target
+      After=network-online.target remote-fs.target
       Wants=network-online.target
 
       [Service]

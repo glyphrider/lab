@@ -12,11 +12,30 @@
     mode: '0755'
   loop: "{{ nfs_mounts }}"
 
-- name: Mount NFS shares
+# fstab only (state: present): the shares are systemd automounts, mounted on
+# first access, so an unreachable NAS never blocks boot or the host.
+- name: Configure NFS shares in fstab
   ansible.posix.mount:
     src: "{{ item.src }}"
     path: "{{ item.path }}"
     fstype: nfs
-    opts: soft,noatime
-    state: mounted
+    opts: "{{ nfs_mount_opts }}"
+    state: present
   loop: "{{ nfs_mounts }}"
+
+- name: Compute automount unit names
+  ansible.builtin.command: systemd-escape --path --suffix=automount {{ item.path }}
+  loop: "{{ nfs_mounts }}"
+  register: r_automount_units
+  changed_when: false
+  check_mode: false
+
+# Starting the automount fails if the share is still directly mounted (e.g. from
+# before this role used automount): unmount it first.
+- name: Start NFS automount units
+  ansible.builtin.systemd:
+    name: "{{ item.stdout }}"
+    state: started
+    daemon_reload: true
+  loop: "{{ r_automount_units.results }}"
+  ignore_errors: "{{ ansible_check_mode }}"
