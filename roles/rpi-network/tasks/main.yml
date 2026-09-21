@@ -192,4 +192,4 @@
     post_reboot_delay: 30
     connect_timeout: 10
     reboot_timeout: 300
-  when: _net_changed | default(false)
+  when: _net_changed | default(false) and rpi_network_reboot | bool

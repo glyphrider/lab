@@ -5,14 +5,21 @@ rpi_eth:          eth0
 rpi_mgmt_ip:      192.168.1.251
 rpi_mgmt_prefix:  24
 rpi_mgmt_gw:      192.168.1.1
-rpi_mgmt_dns:     192.168.1.5
+# Host DNS uses the gateway resolvers, not the lab piholes: this host is the
+# backup DNS server, so its own resolution (apt, timesyncd, image pulls) must
+# not depend on lab being up. Same resolvers the pihole containers use.
+rpi_mgmt_dns:     192.168.1.1
 
 rpi_marisol_vlan: 2
 rpi_marisol_ip:   10.47.2.251
 rpi_marisol_prefix: 24
-rpi_marisol_dns:  10.47.2.5
+rpi_marisol_dns:  10.47.2.1
 
 rpi_iot_vlan:     3
 rpi_iot_ip:       10.47.3.251
 rpi_iot_prefix:   24
-rpi_iot_dns:      10.47.3.5
+rpi_iot_dns:      10.47.3.1
+
+# Reboot automatically when the NetworkManager keyfiles change. Set false
+# (-e rpi_network_reboot=false) to write them and reboot manually later.
+rpi_network_reboot: true
