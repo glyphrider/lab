@@ -129,6 +129,8 @@
     group: "{{ ansible_user }}"
     mode: '0644'
     content: |
+      name: jellyfin
+
       services:
         nginx:
           image: docker.io/nginx
