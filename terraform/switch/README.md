@@ -87,19 +87,23 @@ interface range GigabitEthernet1/0/21-24
 end
 ```
 
-### Spanning tree (PortFast on the lab port)
+### Spanning tree (PortFast on host-facing trunk ports)
 
-The switch runs rapid-pvst with PortFast off by default. The lab server's Linux bridges have STP disabled (`stp=false` in the `bridge-networking` role), so they never answer the switch's rapid-PVST handshake and the port fell back to the 30s listening/learning timers after every lab reboot. During that window containers on `lab` couldn't reach the gateway's DNS (pihole's NTP lookup failed at startup and retried 10 minutes later), and `lab` was unreachable for ~30s after its link came up.
+The switch runs rapid-pvst with PortFast off by default. Hosts that don't speak STP never answer the switch's rapid-PVST handshake (`show spanning-tree interface ... detail` shows `BPDU: received 0`), so the port fell back to the 30s listening/learning timers after every host reboot or link-up. The lab server's Linux bridges have STP disabled (`stp=false` in the `bridge-networking` role); the Pi has no bridge on `eth0` at all. During that window containers couldn't reach the gateway's DNS (pihole's NTP lookup failed at startup and retried 10 minutes later) and the host was unreachable for ~30s after its link came up.
 
 ```
 conf t
 interface GigabitEthernet1/0/2
  spanning-tree portfast trunk
+interface GigabitEthernet1/0/1
+ spanning-tree portfast trunk
 end
 write memory
 ```
 
-Only safe because `Gi1/0/2` is `lab`'s single uplink: PortFast on a port that can bridge back into the switch risks a loop. Verify with `show spanning-tree interface Gi1/0/2 portfast`. Other host-facing trunk ports (`Gi1/0/1` PiHole2, `Gi1/0/4` TrueNAS) still have the delay after their hosts reboot.
+`Gi1/0/2` is `lab` and `Gi1/0/1` is PiHole2. Only safe because each is a single host's uplink: PortFast on a port that can bridge back into the switch risks a loop. Verify with `show spanning-tree interface Gi1/0/2 portfast`. After enabling it on `Gi1/0/2`, the piholes on `lab` resolved and synced NTP on their first attempt at startup; on `Gi1/0/1`, SSH to the Pi came back at 25s of uptime instead of ~45s and pihole's startup DNS lookups succeeded. `Gi1/0/4` (TrueNAS) still has the delay after the NAS reboots.
+
+The Pi has no RTC, so its clock is stepped by `systemd-timesyncd` ~70s after boot; a pihole whose NTP samples straddle that step logs `Standard deviation of time offset is too large` and retries 10 minutes later. Harmless (DNS is unaffected), and separate from the network delay above.
 
 ### Users and SSH access
 
