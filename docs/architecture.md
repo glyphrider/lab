@@ -76,6 +76,14 @@ The `jellyfin` role runs on the lab server. `jellyfin-nginx` (TLS termination) h
 
 `jellyfin-internal` is IPv4-only — no AAAA/IPv6 route. Because metadata providers (TMDb, OMDb, etc.) are dual-stack, the jellyfin container needs `DOTNET_SYSTEM_NET_DISABLEIPV6=1` set; otherwise .NET's Happy Eyeballs connection logic races the unreachable IPv6 address and metadata lookups fail with `SocketException: Resource temporarily unavailable` instead of falling back to the working IPv4 path.
 
+The media library is NFS-mounted from the NAS (`nfs-media` role) and bind-mounted into the container at `/media`. The shares are **systemd automounts** (`x-systemd.automount`, `_netdev,nofail`): nothing mounts at boot, the first access triggers the mount, and a failed attempt errors after `nfs_mount_timeout` (30s, `x-systemd.mount-timeout`), so an unreachable NAS can't block boot or the host. Soft mounts with `timeo=50,retrans=3` make I/O on an established mount fail after a few seconds rather than hang.
+
+The mounts use the NAS **IP**, not `nas.marisol.home`: marisol-view DNS is served by pihole/unbound containers on this same host, which start after the mounts are first attempted at boot, so a hostname source can fail to resolve. The jellyfin bind mount of `/media` uses `propagation: rslave`; with the default private propagation the container never sees an NFS mount made on top of the autofs after it started (it gets an empty directory and "Operation not permitted"). `jellyfin.service` is ordered `After=remote-fs.target` so the automount points exist when the container is created. Symptom of a broken mount: jellyfin healthy, libraries empty, `Could not find file '/media/...'` errors; check `findmnt /media/movies` and `systemctl status media-movies.automount` on lab.
+
+`x-systemd.mount-timeout` only takes effect on `/etc/fstab` entries (via the fstab generator), not on transient units made with `systemd-mount`.
+
+Each compose stack in `/var/lab/compose/` (pihole, unbound, monitoring, jellyfin) sets its own top-level `name:`, so each gets its own podman project and pod (`pod_<name>`). Without it podman-compose falls back to the directory basename, so every stack became project `compose` / `pod_compose`: at boot they raced to create the shared pod (`no pod with name or ID pod_compose found`), and one stack's `down` could remove another's freshly created containers. All volumes and networks are explicitly named or `external`, so the project name doesn't change any data or network names.
+
 ## CA certificate
 
 `files/marisol.crt` (playbook-level) is the shared internal CA cert. Roles reference it as `src: marisol.crt` (copy module) or `lookup('file', playbook_dir + '/files/marisol.crt')` (pihole). It is deployed to the system trust store on Fedora (`update-ca-trust`), Ubuntu (`update-ca-certificates`), and Raspberry Pi OS (`update-ca-certificates`).
