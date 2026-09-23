@@ -36,6 +36,7 @@ unbound_views:
       - { name: switch,     ip: 192.168.1.253 }
       - { name: pihole2,    ip: 192.168.1.251, mac: "dc:a6:32:d0:9c:a6" }
       - { name: beast,      ip: 192.168.1.21,  mac: "00:d8:61:a6:97:17" }
+      - { name: stealth,    ip: 192.168.1.22,  mac: "c8:ff:bf:0c:df:3c" }
       - { name: jellyfin,   ip: 192.168.1.6,   mac: "02:42:c0:a8:01:06" }
       - { name: grafana,    ip: 192.168.1.7   }
       - { name: prometheus, ip: 192.168.1.8   }
@@ -51,6 +52,7 @@ unbound_views:
       - { name: pihole2,  ip: 10.47.2.251 }
       - { name: proxmox,  ip: 10.47.2.9   } # mac pending; add to get a DHCP reservation
       - { name: beast,    ip: 10.47.2.21,  mac: "00:d8:61:a6:97:16" }
+      - { name: stealth,  ip: 10.47.2.22,  mac: "c8:ff:bf:0c:df:3d" }
       - { name: et8550,   ip: 10.47.2.18,  mac: "d4:80:8b:a8:06:de" }
       - { name: et2803,   ip: 10.47.2.19,  mac: "a4:d7:3c:26:bc:d2" }
       - { name: et2903,   ip: 10.47.2.20,  mac: "58:05:d9:59:ea:58" }
