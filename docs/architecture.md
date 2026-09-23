@@ -27,9 +27,9 @@ Unbound on the gateway uses views to return different records per VLAN:
 
 `unbound_views`, `unbound_local_zone`, and `unbound_access_control` are defined in `group_vars/all/vars.yml` and shared between the gateway `unbound` role and the lab `unbound-container` role.
 
-Each lab pihole instance uses its own VLAN's unbound interface as primary upstream and the backup unbound container (`.254`) as secondary, so DNS views work correctly on both. The pihole2 instances use only the gateway unbound as upstream (no `upstream2`), so they keep working when the lab host is down. Pihole containers also set `dns:` in their compose service to the primary upstream, ensuring the gravity update check uses the correct resolver.
+Each lab pihole instance uses its own VLAN's unbound interface as primary upstream and the backup unbound container (`.254`) as secondary, so DNS views work correctly on both. The pihole2 instances use the gateway unbound plus a local unbound container on the Pi (see below) — nothing on the lab host — so they keep working when lab is down. Pihole containers also set `dns:` in their compose service to the primary upstream, ensuring the gravity update check uses the correct resolver.
 
-DHCP advertises two DNS servers per subnet — primary (`.5`) on lab and secondary (`.251`) on pihole2. The lab piholes use the gateway unbound (`.1`) as primary upstream and the lab unbound container (`.254`) as secondary; pihole2 uses the gateway only.
+DHCP advertises two DNS servers per subnet — primary (`.5`) on lab and secondary (`.251`) on pihole2. The lab piholes use the gateway unbound (`.1`) as primary upstream and the lab unbound container (`.254`) as secondary; pihole2 uses the gateway (`.1`) and its own local unbound.
 
 ## Pihole
 
@@ -47,6 +47,8 @@ The `unbound-container` role runs a custom Alpine+unbound container on the lab h
 - `192.168.1.254` (management)
 - `10.47.2.254` (marisol)
 - `10.47.3.254` (iot)
+
+**On the Pi:** the same role runs one unbound container attached to three private podman bridge networks (`pi-management-dns` 10.89.1.0/24, `pi-marisol-dns` 10.89.2.0/24, `pi-iot-dns` 10.89.3.0/24; unbound is `.2` on each). Each pihole2 container joins only its VLAN's network and uses that unbound (`.2`) as its second upstream. Because pihole queries arrive from the private network rather than the VLAN, `unbound_container_instances` entries with a `subnet` and `view` map that subnet to the matching view (`access-control-view`). The networks are created by the role, so it must run before `pihole` (`pi.yml` orders it that way).
 
 The container uses the same split-horizon view config as the gateway (shared via `group_vars/all/vars.yml`). The image is built locally from `roles/unbound-container/files/Containerfile` using Alpine + unbound + bind-tools. DNSSEC validation is disabled in the container (no `auto-trust-anchor-file`) — the gateway handles that.
 

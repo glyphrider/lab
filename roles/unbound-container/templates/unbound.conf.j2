@@ -11,6 +11,10 @@ server:
 	access-control-view: {{ client }} {{ view.name }}
 {% endfor %}
 {% endfor %}
+{% for instance in unbound_container_instances if instance.subnet is defined %}
+	access-control: {{ instance.subnet }} allow
+	access-control-view: {{ instance.subnet }} {{ instance.view }}
+{% endfor %}
 
 	root-hints: "/etc/unbound/root.hints"
 	use-syslog: no

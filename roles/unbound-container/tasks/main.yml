@@ -7,6 +7,23 @@
     group: root
     mode: '0755'
 
+- name: Create compose directory
+  ansible.builtin.file:
+    path: "{{ unbound_container_compose_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+# Instances with a `subnet` sit on a private bridge network created here (the
+# Pi, where pihole and unbound share it); the rest use pre-existing macvlans.
+- name: Create private podman networks
+  ansible.builtin.command: podman network create --subnet {{ item.subnet }} {{ item.network }}
+  loop: "{{ unbound_container_instances | selectattr('subnet', 'defined') | list }}"
+  register: _network_create
+  failed_when: _network_create.rc != 0 and 'already exists' not in _network_create.stderr
+  changed_when: _network_create.rc == 0
+
 # ── Image build ────────────────────────────────────────────────────────────────
 
 - name: Copy Containerfile to build directory

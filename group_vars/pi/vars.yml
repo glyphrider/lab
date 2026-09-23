@@ -5,21 +5,35 @@ pihole_tls_cert_file: pihole2.crt
 pihole_tls_key_file:  pihole2.key
 pihole_compose_bin:   /usr/bin/podman-compose
 
+# Each VLAN's pihole shares a private bridge network with the local unbound
+# container, which answers from the same split-horizon views as the gateway.
+# `subnet`/`view` map queries arriving from that network to the right view.
+unbound_container_instances:
+  - { network: pi-management-dns, ip: 10.89.1.2, subnet: 10.89.1.0/24, view: management }
+  - { network: pi-marisol-dns,    ip: 10.89.2.2, subnet: 10.89.2.0/24, view: marisol    }
+  - { network: pi-iot-dns,        ip: 10.89.3.2, subnet: 10.89.3.0/24, view: iot        }
+
 pihole_instances:
   - name:      pihole-management
     ip:        192.168.1.251
     upstream:  192.168.1.1
+    upstream2: 10.89.1.2
+    network:   pi-management-dns
     hostname:  pihole2.marisol.home
     domain:    pihole2.marisol.home
 
   - name:      pihole-marisol
     ip:        10.47.2.251
     upstream:  10.47.2.1
+    upstream2: 10.89.2.2
+    network:   pi-marisol-dns
     hostname:  pihole2-marisol.marisol.home
     domain:    pihole2.marisol.home
 
   - name:      pihole-iot
     ip:        10.47.3.251
     upstream:  10.47.3.1
+    upstream2: 10.89.3.2
+    network:   pi-iot-dns
     hostname:  pihole2-iot.marisol.home
     domain:    pihole2.marisol.home

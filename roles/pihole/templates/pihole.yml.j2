@@ -18,6 +18,10 @@ services:
       - "{{ instance.ip }}:53:53/tcp"
       - "{{ instance.ip }}:80:80/tcp"
       - "{{ instance.ip }}:443:443/tcp"
+{% if instance.network is defined %}
+    networks:
+      - {{ instance.network }}
+{% endif %}
     dns:
       - {{ instance.upstream }}
 {% endif %}
@@ -53,6 +57,10 @@ services:
     image: docker.io/ekofr/pihole-exporter
     ports:
       - "{{ pihole_instances[0].ip }}:9617:9617"
+{% if pihole_instances[0].network is defined %}
+    networks:
+      - {{ pihole_instances[0].network }}
+{% endif %}
     environment:
       PIHOLE_HOSTNAME: '{{ pihole_instances[0].name }}'
       PIHOLE_PASSWORD: '{{ pihole_password }}'
@@ -67,7 +75,7 @@ volumes:
     name: {{ instance.name }}-etc
 {% endfor %}
 
-{% if pihole_network_type == 'macvlan' %}
+{% if pihole_instances | selectattr('network', 'defined') | list %}
 networks:
 {% for network in pihole_instances | map(attribute='network') | unique %}
   {{ network }}:

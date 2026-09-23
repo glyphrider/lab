@@ -7,5 +7,6 @@
     - { role: system-setup,  tags: system-setup }
     - { role: rpi-network,   tags: rpi-network }
     - { role: podman,      tags: podman }
+    - { role: unbound-container, tags: unbound-container }
     - { role: pihole,        tags: pihole }
     - { role: node-exporter, tags: node-exporter }
