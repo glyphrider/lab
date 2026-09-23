@@ -27,9 +27,9 @@ Unbound on the gateway uses views to return different records per VLAN:
 
 `unbound_views`, `unbound_local_zone`, and `unbound_access_control` are defined in `group_vars/all/vars.yml` and shared between the gateway `unbound` role and the lab `unbound-container` role.
 
-Each pihole instance uses its own VLAN's unbound interface as primary upstream and the backup unbound container (`.254`) as secondary, so DNS views work correctly on both. Pihole containers also set `dns:` in their compose service to the primary upstream, ensuring the gravity update check uses the correct resolver.
+Each lab pihole instance uses its own VLAN's unbound interface as primary upstream and the backup unbound container (`.254`) as secondary, so DNS views work correctly on both. The pihole2 instances use only the gateway unbound as upstream (no `upstream2`), so they keep working when the lab host is down. Pihole containers also set `dns:` in their compose service to the primary upstream, ensuring the gravity update check uses the correct resolver.
 
-DHCP advertises two DNS servers per subnet — primary (`.5`) on lab and secondary (`.251`) on pihole2. Both piholes use the gateway unbound (`.1`) as primary upstream and the lab unbound container (`.254`) as secondary.
+DHCP advertises two DNS servers per subnet — primary (`.5`) on lab and secondary (`.251`) on pihole2. The lab piholes use the gateway unbound (`.1`) as primary upstream and the lab unbound container (`.254`) as secondary; pihole2 uses the gateway only.
 
 ## Pihole
 
