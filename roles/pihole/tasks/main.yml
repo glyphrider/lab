@@ -52,6 +52,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
+  diff: false  # the exporter env holds the web password
   register: r_compose
 
 # ── Systemd service ───────────────────────────────────────────────────────────
