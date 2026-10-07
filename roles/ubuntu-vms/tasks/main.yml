@@ -1,7 +1,7 @@
 ---
 - name: Create terraform directory
   ansible.builtin.file:
-    path: "{{ rhel_terraform_dir }}"
+    path: "{{ ubuntu_terraform_dir }}"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -29,15 +29,15 @@
 - name: Download VM base images
   ansible.builtin.get_url:
     url:  "{{ item.image_url }}"
-    dest: "{{ rhel_image_dir }}/{{ item.image }}"
+    dest: "{{ ubuntu_image_dir }}/{{ item.image }}"
     mode: '0644'
-  loop: "{{ rhel_vms }}"
+  loop: "{{ ubuntu_vms }}"
   when: item.image_url is defined
 
 - name: Template main.tf
   ansible.builtin.template:
     src: main.tf.j2
-    dest: "{{ rhel_terraform_dir }}/main.tf"
+    dest: "{{ ubuntu_terraform_dir }}/main.tf"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
@@ -45,34 +45,34 @@
 - name: Template per-VM user-data
   ansible.builtin.template:
     src: vm-user-data.yml.j2
-    dest: "{{ rhel_terraform_dir }}/{{ item.name }}-user-data.yml"
+    dest: "{{ ubuntu_terraform_dir }}/{{ item.name }}-user-data.yml"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
-  loop: "{{ rhel_vms }}"
+  loop: "{{ ubuntu_vms }}"
   vars:
-    vm_admin_group: wheel
+    vm_admin_group: sudo
 
 - name: Template per-VM network-config
   ansible.builtin.template:
     src: vm-network-config.yml.j2
-    dest: "{{ rhel_terraform_dir }}/{{ item.name }}-network-config.yml"
+    dest: "{{ ubuntu_terraform_dir }}/{{ item.name }}-network-config.yml"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
-  loop: "{{ rhel_vms }}"
+  loop: "{{ ubuntu_vms }}"
 
 - name: Terraform init
   ansible.builtin.command:
     cmd: terraform init -upgrade
-    chdir: "{{ rhel_terraform_dir }}"
+    chdir: "{{ ubuntu_terraform_dir }}"
   become_user: "{{ ansible_user }}"
   changed_when: false
 
 - name: Terraform apply
   ansible.builtin.command:
     cmd: terraform apply -auto-approve
-    chdir: "{{ rhel_terraform_dir }}"
+    chdir: "{{ ubuntu_terraform_dir }}"
   become_user: "{{ ansible_user }}"
   register: _tf_apply
   changed_when: "'No changes.' not in _tf_apply.stdout"
@@ -83,7 +83,7 @@
     port: 22
     delay: 15
     timeout: 300
-  loop: "{{ rhel_vms }}"
+  loop: "{{ ubuntu_vms }}"
   when: _tf_apply.changed
 
 - name: Wait for cloud-init to complete on each VM
@@ -97,5 +97,5 @@
   changed_when: false
   failed_when: _cloud_init.rc not in [0, 2]
   register: _cloud_init
-  loop: "{{ rhel_vms }}"
+  loop: "{{ ubuntu_vms }}"
   when: _tf_apply.changed

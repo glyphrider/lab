@@ -6,7 +6,7 @@ manage_etc_hosts: true
 users:
   - name: {{ ansible_user }}
     sudo: ALL=(ALL) NOPASSWD:ALL
-    groups: wheel
+    groups: {{ vm_admin_group }}
     shell: /bin/bash
     lock_passwd: false
     ssh_authorized_keys:

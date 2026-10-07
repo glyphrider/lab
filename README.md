@@ -178,7 +178,7 @@ ansible-playbook pi.yml --tags <role>
 ansible-playbook lab.yml --check
 ```
 
-Available tags match role names: `system-setup`, `user-setup`, `bridge-networking`, `podman`, `podman-macvlan`, `pihole`, `nfs-media`, `va-api`, `jellyfin`, `virtualization`, `node-exporter`, `monitoring`, `unbound-container`, `rhel-vms`, `unifi`, `gateway-network`, `gateway-services`, `dhcpd`, `unbound`, `rpi-network`, `rhel-setup`, `ol-setup`.
+Available tags match role names: `system-setup`, `user-setup`, `bridge-networking`, `podman`, `podman-macvlan`, `pihole`, `nfs-media`, `va-api`, `jellyfin`, `virtualization`, `node-exporter`, `monitoring`, `unbound-container`, `rhel-vms`, `ubuntu-vms`, `unifi`, `gateway-network`, `gateway-services`, `dhcpd`, `unbound`, `rpi-network`, `rhel-setup`, `ol-setup`.
 
 ## Updating UniFi OS Server
 

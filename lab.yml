@@ -32,6 +32,8 @@
       tags: unbound-container
     - role: rhel-vms
       tags: rhel-vms
+    - role: ubuntu-vms
+      tags: ubuntu-vms
 
 - name: Configure UniFi VM
   hosts: unifi

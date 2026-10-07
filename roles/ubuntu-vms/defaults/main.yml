@@ -1,0 +1,14 @@
+---
+ubuntu_image_dir:         /var/lib/libvirt/images
+ubuntu_terraform_dir:     /var/lab/terraform/ubuntu
+ubuntu_vm_network_bridge: management0
+ubuntu_vm_memory:         2048
+ubuntu_vm_vcpu:           2
+
+ubuntu_vms:
+  - name:      focal
+    image:     focal-server-cloudimg-amd64.img
+    image_url: https://cloud-images.ubuntu.com/focal/current/focal-server-cloudimg-amd64.img
+    mac:       "52:54:00:47:71:11"
+    ip:        192.168.1.42
+    disk_size: 17179869184  # 16 GiB

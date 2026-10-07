@@ -1,0 +1,77 @@
+terraform {
+  required_providers {
+    libvirt = {
+      source  = "dmacvicar/libvirt"
+      version = "= 0.7.6"
+    }
+  }
+}
+
+provider "libvirt" {
+  uri = "qemu:///system"
+}
+
+{% for vm in ubuntu_vms %}
+resource "libvirt_volume" "{{ vm.name }}_base" {
+  name   = "{{ vm.image }}"
+  pool   = "default"
+  source = "{{ ubuntu_image_dir }}/{{ vm.image }}"
+  format = "qcow2"
+}
+
+resource "libvirt_volume" "{{ vm.name }}" {
+  name           = "{{ vm.name }}.qcow2"
+  pool           = "default"
+  base_volume_id = libvirt_volume.{{ vm.name }}_base.id
+{% if vm.disk_size is defined %}
+  size           = {{ vm.disk_size }}
+{% endif %}
+  format         = "qcow2"
+}
+
+resource "libvirt_cloudinit_disk" "{{ vm.name }}_init" {
+  name           = "{{ vm.name }}-init.iso"
+  pool           = "default"
+  user_data      = file("${path.module}/{{ vm.name }}-user-data.yml")
+  network_config = file("${path.module}/{{ vm.name }}-network-config.yml")
+
+  lifecycle {
+    ignore_changes = all
+  }
+}
+
+resource "libvirt_domain" "{{ vm.name }}" {
+  name      = "{{ vm.name }}"
+  memory    = {{ ubuntu_vm_memory }}
+  vcpu      = {{ ubuntu_vm_vcpu }}
+  autostart = true
+
+  cloudinit = libvirt_cloudinit_disk.{{ vm.name }}_init.id
+
+  cpu {
+    mode = "host-passthrough"
+  }
+
+  network_interface {
+    bridge = "{{ ubuntu_vm_network_bridge }}"
+    mac    = "{{ vm.mac }}"
+  }
+
+  disk {
+    volume_id = libvirt_volume.{{ vm.name }}.id
+  }
+
+  console {
+    type        = "pty"
+    target_type = "serial"
+    target_port = "0"
+  }
+
+  graphics {
+    type        = "spice"
+    listen_type = "address"
+    autoport    = true
+  }
+}
+
+{% endfor %}
