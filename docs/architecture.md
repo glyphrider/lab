@@ -68,7 +68,7 @@ Key implementation details:
 
 ## Ubuntu VMs
 
-The `ubuntu-vms` role mirrors `rhel-vms` for Ubuntu test VMs (currently `focal`, 20.04): same Terraform layout, state at `/var/lab/terraform/ubuntu/`, VM definitions in `roles/ubuntu-vms/defaults/main.yml`. Cloud images are downloaded from `cloud-images.ubuntu.com` via `get_url`. VMs get their IP from a gateway DHCP reservation (`dhcp_only_hosts` in `group_vars/all/vars.yml`) and are not in the inventory — no post-provisioning configuration.
+The `ubuntu-vms` role mirrors `rhel-vms` for Ubuntu test VMs (currently `bionic`, 18.04, and `focal`, 20.04): same Terraform layout, state at `/var/lab/terraform/ubuntu/`, VM definitions in `roles/ubuntu-vms/defaults/main.yml`. Cloud images are downloaded from `cloud-images.ubuntu.com` via `get_url`. VMs get their IP from a gateway DHCP reservation (`dhcp_only_hosts` in `group_vars/all/vars.yml`) and are not in the inventory — no post-provisioning configuration.
 
 Both roles render cloud-init from the shared playbook-level `templates/vm-user-data.yml.j2` and `templates/vm-network-config.yml.j2` (Ansible falls back to the playbook `templates/` dir when a role has no local copy). Each role sets `vm_admin_group` on its template task — `wheel` for RHEL/OL, `sudo` for Ubuntu.
 
