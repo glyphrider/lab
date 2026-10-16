@@ -15,6 +15,8 @@ Ansible automation for a home lab consisting of managed hosts:
 | rhel8 | 192.168.1.35 | RHEL 8 KVM VM | `lab.yml` (fourth play) |
 | rhel9 | 192.168.1.36 | RHEL 9 KVM VM | `lab.yml` (fourth play) |
 | ol9 | 192.168.1.39 | Oracle Linux 9 KVM VM | `lab.yml` (fifth play) |
+| bionic | 192.168.1.41 | Ubuntu 18.04 KVM VM | `lab.yml` (sixth play) |
+| focal | 192.168.1.42 | Ubuntu 20.04 KVM VM | `lab.yml` (sixth play) |
 | nas | 192.168.1.4 | TrueNAS Scale | _(not automated)_ |
 | switch | 192.168.1.253 | Cisco Catalyst WS-C3650-48PS | Terraform, not Ansible — see `terraform/switch/README.md` |
 
@@ -60,4 +62,4 @@ Secrets are managed with ansible-vault. Encrypted files:
 To edit an encrypted file: `ansible-vault edit <file>`
 To encrypt a new file: `ansible-vault encrypt <file>`
 
-Available role tags: `system-setup`, `user-setup`, `bridge-networking`, `podman`, `podman-macvlan`, `pihole`, `nfs-media`, `va-api`, `jellyfin`, `virtualization`, `node-exporter`, `monitoring`, `unbound-container`, `rhel-vms`, `ubuntu-vms`, `unifi`, `gateway-network`, `gateway-services`, `dhcpd`, `unbound`, `rpi-network`, `rhel-setup`, `ol-setup`
+Available role tags: `system-setup`, `user-setup`, `bridge-networking`, `podman`, `podman-macvlan`, `pihole`, `nfs-media`, `va-api`, `jellyfin`, `virtualization`, `node-exporter`, `monitoring`, `unbound-container`, `rhel-vms`, `ubuntu-vms`, `unifi`, `gateway-network`, `gateway-services`, `dhcpd`, `unbound`, `rpi-network`, `rhel-setup`, `ol-setup`, `ubuntu-setup`

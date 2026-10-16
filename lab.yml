@@ -64,3 +64,11 @@
       tags: ol-setup
     - role: node-exporter
       tags: node-exporter
+
+- name: Configure Ubuntu VMs
+  hosts: ubuntu
+  become: true
+  gather_facts: false
+  roles:
+    - role: ubuntu-setup
+      tags: ubuntu-setup

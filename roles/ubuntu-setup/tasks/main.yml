@@ -1,0 +1,47 @@
+---
+# Everything here uses `raw`: bionic (Python 3.6) and focal (Python 3.8) are
+# below the minimum target Python of the controller's ansible-core, so no
+# Python modules (including fact gathering) can run on them.
+
+# ── Disable automatic updates ─────────────────────────────────────────────────
+# Re-applied on every run so a package upgrade (e.g. unattended-upgrades
+# rewriting its config) or manual change can't quietly turn them back on.
+
+- name: Disable APT periodic tasks
+  ansible.builtin.raw: |
+    conf=/etc/apt/apt.conf.d/20auto-upgrades
+    want='APT::Periodic::Update-Package-Lists "0";
+    APT::Periodic::Download-Upgradeable-Packages "0";
+    APT::Periodic::AutocleanInterval "0";
+    APT::Periodic::Unattended-Upgrade "0";'
+    if [ "$(cat "$conf" 2>/dev/null)" != "$want" ]; then
+      printf '%s\n' "$want" > "$conf"
+      echo CHANGED
+    fi
+  register: _apt_periodic
+  changed_when: "'CHANGED' in _apt_periodic.stdout"
+
+- name: Stop and mask APT update timers and services
+  ansible.builtin.raw: |
+    set -e
+    for unit in apt-daily.timer apt-daily-upgrade.timer \
+                apt-daily.service apt-daily-upgrade.service \
+                unattended-upgrades.service; do
+      if [ "$(systemctl is-enabled "$unit" 2>/dev/null)" != masked ]; then
+        systemctl mask --now "$unit"
+        echo "CHANGED $unit"
+      fi
+    done
+  register: _apt_units
+  changed_when: "'CHANGED' in _apt_units.stdout"
+
+- name: Hold snap auto-refresh indefinitely
+  ansible.builtin.raw: |
+    set -e
+    command -v snap >/dev/null || exit 0
+    if [ "$(snap get system refresh.hold 2>/dev/null)" != forever ]; then
+      snap refresh --hold
+      echo CHANGED
+    fi
+  register: _snap_hold
+  changed_when: "'CHANGED' in _snap_hold.stdout"

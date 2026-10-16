@@ -68,7 +68,9 @@ Key implementation details:
 
 ## Ubuntu VMs
 
-The `ubuntu-vms` role mirrors `rhel-vms` for Ubuntu test VMs (currently `bionic`, 18.04, and `focal`, 20.04): same Terraform layout, state at `/var/lab/terraform/ubuntu/`, VM definitions in `roles/ubuntu-vms/defaults/main.yml`. Cloud images are downloaded from `cloud-images.ubuntu.com` via `get_url`. VMs get their IP from a gateway DHCP reservation and a DNS name from the matching `management` record in `unbound_views` (`group_vars/all/vars.yml`); they are not in the inventory — no post-provisioning configuration.
+The `ubuntu-vms` role mirrors `rhel-vms` for Ubuntu test VMs (currently `bionic`, 18.04, and `focal`, 20.04): same Terraform layout, state at `/var/lab/terraform/ubuntu/`, VM definitions in `roles/ubuntu-vms/defaults/main.yml`. Cloud images are downloaded from `cloud-images.ubuntu.com` via `get_url`. VMs get their IP from a gateway DHCP reservation and a DNS name from the matching `management` record in `unbound_views` (`group_vars/all/vars.yml`); they are in the `ubuntu` inventory group.
+
+**Ubuntu VMs** (`roles/ubuntu-setup`): Disables all automatic updates, re-applied on every run — zeroes the `APT::Periodic` settings in `/etc/apt/apt.conf.d/20auto-upgrades`, masks `apt-daily{,-upgrade}.{timer,service}` and `unattended-upgrades.service`, and holds snap auto-refresh indefinitely (`snap refresh --hold`). Every task uses `raw`, since bionic's Python 3.6 and focal's 3.8 are too old for the controller's ansible-core; the play runs with `gather_facts: false`.
 
 Both roles render cloud-init from the shared playbook-level `templates/vm-user-data.yml.j2` and `templates/vm-network-config.yml.j2` (Ansible falls back to the playbook `templates/` dir when a role has no local copy). Each role sets `vm_admin_group` on its template task — `wheel` for RHEL/OL, `sudo` for Ubuntu.
 
