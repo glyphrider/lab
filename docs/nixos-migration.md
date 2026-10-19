@@ -213,3 +213,19 @@ The biggest risk is a networking change that locks you out of a headless host. U
 - [ ] Should updates be manual (`nix flake update` + deploy) or `system.autoUpgrade` from the repo?
 - [ ] Which NAS share should the Terraform state backup go to? It needs a dataset exported to 192.168.1.3 with write access, e.g. `/mnt/tank/backups/lab`.
 - [ ] Should the three VM-provisioning roles stay in Ansible long term, or should Terraform move into Nix too?
+
+## Alternative considered: GNU Guix
+
+Guix System was considered and rejected. It is declarative like NixOS, so the plan's shape carries over, but most of the pieces this host needs are missing or less mature. Expect roughly twice the effort, most of it in hand-written Scheme services. Findings as of 2026-10-19:
+
+| Area | Guix situation | Effect on this plan |
+| --- | --- | --- |
+| Init | Shepherd, not systemd. No oneshot units, `Before=`/`After=` ordering, systemd timers or automounts | Every custom unit, the macvlan network setup and the backup timer become Scheme services or mcron jobs. The NFS automounts and `After=remote-fs.target` ordering need rework |
+| Networking | `static-networking` documents VLANs and bonds. In 2023, bridges weren't supported by guile-netlink, the library underneath ([help-guix](https://lists.nongnu.org/archive/html/help-guix/2023-03/msg00236.html)); there's also a VLAN hang bug ([#68595](https://issues.guix.gnu.org/68595)) | The three bridges, two VLANs and `mgmt0-shim` likely need a custom service running `ip link`. This is the riskiest piece |
+| Containers | The older container service is Docker-only. A proposed replacement handles podman, networks and volumes, but only rootless podman ([design](https://fishinthecalculator.me/blog/declarative-transactional-cloud-native-oci-provisioning-with-guix.html), [#76081](https://issues.guix.gnu.org/76081)) | Rootful podman with macvlan IPs means hand-written services that call `podman` |
+| Secrets | [sops-guix](https://fishinthecalculator.me/blog/secrets-management-with-sops-guix.html), a third-party add-on modelled on sops-nix | Workable; it's maintained by one person |
+| Firmware | Kernel ships with non-free firmware removed; non-free packages are excluded | NIC and GPU firmware (VA-API) likely need the unofficial [nonguix](https://gitlab.com/nonguix/nonguix) channel |
+| Terraform | Not packaged (BSL licence isn't free software); OpenTofu packaging unconfirmed | Install a binary by hand or run it in a container. State can still live on lab |
+| Install | No `nixos-anywhere`/`disko` equivalent; installer + `guix system init`, then `guix deploy` | Manual install; the controller also needs Guix installed |
+
+Guix becomes worth revisiting if its rootful podman support, bridge networking and Terraform/OpenTofu packaging mature, or if a fully free system becomes a goal in its own right.
