@@ -4,7 +4,7 @@ _Status: proposed, 2026-10-19._
 
 ## Summary and scope
 
-Replace Fedora 43 on the lab host (192.168.1.3) with NixOS, declared as `nixosConfigurations.lab` in this repo's existing `flake.nix`, with secrets in sops-nix. Only the base OS under the VMs changes. Every VM keeps its OS, IP and MAC, and keeps being configured by its current Ansible play.
+Replace Fedora 44 on the lab host (192.168.1.3) with NixOS, declared as `nixosConfigurations.lab` in this repo's existing `flake.nix`, with secrets in sops-nix. Only the base OS under the VMs changes. Every VM keeps its OS, IP and MAC, and keeps being configured by its current Ansible play.
 
 **Changes:** the first play in `lab.yml` (`hosts: lab`, 15 roles) gets smaller. Twelve roles become NixOS modules, deployed with `nixos-rebuild switch --flake .#lab --target-host lab`. `virtualization`, `rhel-vms` and `ubuntu-vms` stay in Ansible. Only `virtualization` loses tasks (its package installs); the other two run unchanged.
 
@@ -187,7 +187,7 @@ The gateway's unbound and dhcpd don't depend on any lab IP, so routing and DHCP 
 
 - **Before Phase 3:** nothing to roll back. Fedora is untouched.
 - **After install, config problem:** fix it and redeploy, or boot an earlier generation from the boot menu.
-- **After install, unrecoverable** (hardware or network won't come up): reinstall Fedora 43 from USB, restore `/var/lab/terraform` and `/var/lib/libvirt/images`, and run `ansible-playbook lab.yml` from `main`. Every Fedora role still exists on `main` until Phase 6 merges, so `main` stays the rollback path. Keep the backups until the NixOS host has run cleanly for at least two weeks.
+- **After install, unrecoverable** (hardware or network won't come up): reinstall Fedora 44 from USB, restore `/var/lab/terraform` and `/var/lib/libvirt/images`, and run `ansible-playbook lab.yml` from `main`. Every Fedora role still exists on `main` until Phase 6 merges, so `main` stays the rollback path. Keep the backups until the NixOS host has run cleanly for at least two weeks.
 
 ## Risks and open questions
 

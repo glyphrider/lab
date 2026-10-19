@@ -10,7 +10,7 @@ deployment modes, VM provisioning, jellyfin's IPv6 quirk, etc.) lives in
 
 | Host | IP | OS | Role |
 |------|----|----|------|
-| lab | 192.168.1.3 | Fedora 43 | Primary server — containers, VMs, NFS client |
+| lab | 192.168.1.3 | Fedora 44 | Primary server — containers, VMs, NFS client |
 | gateway | 192.168.1.1 | OpenBSD | Router — DHCP, DNS, firewall |
 | unifi | 192.168.1.2 | Ubuntu 24.04 VM | UniFi OS Server |
 | pihole2 | 192.168.1.251 | Raspberry Pi OS (Bookworm) | Secondary DNS — pihole redundancy |
