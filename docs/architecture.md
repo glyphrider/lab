@@ -3,6 +3,10 @@
 Implementation detail for the roles in this repo. See `CLAUDE.md` for the
 host list, commands, and secrets inventory.
 
+A proposed move of the lab host from Fedora to NixOS is planned in
+[`nixos-migration.md`](nixos-migration.md); until it lands, this document
+describes the current Fedora setup.
+
 ## Network layout
 
 The lab server has a layered bridge stack:
@@ -51,6 +55,19 @@ The `unbound-container` role runs a custom Alpine+unbound container on the lab h
 **On the Pi:** the same role runs one unbound container attached to three private podman bridge networks (`pi-management-dns` 10.89.1.0/24, `pi-marisol-dns` 10.89.2.0/24, `pi-iot-dns` 10.89.3.0/24; unbound is `.2` on each). Each pihole2 container joins only its VLAN's network and uses that unbound (`.2`) as its second upstream. Because pihole queries arrive from the private network rather than the VLAN, `unbound_container_instances` entries with a `subnet` and `view` map that subnet to the matching view (`access-control-view`). The networks are created by the role, so it must run before `pihole` (`pi.yml` orders it that way).
 
 The container uses the same split-horizon view config as the gateway (shared via `group_vars/all/vars.yml`). The image is built locally from `roles/unbound-container/files/Containerfile` using Alpine + unbound + bind-tools. DNSSEC validation is disabled in the container (no `auto-trust-anchor-file`) — the gateway handles that.
+
+## VM provisioning flow
+
+All KVM VMs (unifi, RHEL/OL, Ubuntu) are created by Terraform, but Terraform is never run by hand: Ansible drives it. The `virtualization`, `rhel-vms` and `ubuntu-vms` roles are tasks in the `hosts: lab` play, so every step below executes **on the lab server**, not on the controller.
+
+1. **Ansible prepares the inputs on lab.** The role creates `/var/lab/terraform/<set>/`, downloads base images into `/var/lib/libvirt/images/`, and templates `main.tf` plus per-VM cloud-init `user-data` / `network-config` into that directory. SSH keys for the VMs come from lab's own `~/.ssh/id_ed25519.pub` and the user's `authorized_keys`.
+2. **Ansible runs Terraform on lab.** `terraform init -upgrade` and `terraform apply -auto-approve` run as `ansible.builtin.command` tasks (as `ansible_user`). The task reports "changed" unless the output contains `No changes.`
+3. **Terraform creates the VMs through local libvirt.** The provider uses `uri = "qemu:///system"`, the local libvirt socket, which is why Terraform must run on the libvirt host. It creates the base and overlay volumes, the cloud-init ISO and the domain. State stays on lab in `/var/lab/terraform/{unifi,rhel,ubuntu}/`.
+4. **Cloud-init does first boot.** It sets the static IP, user and SSH keys inside each guest.
+5. **Ansible waits for the guests.** If the apply changed anything, the role waits for port 22, then SSHes from lab into each VM and runs `cloud-init status --wait`.
+6. **Separate plays configure the guests.** Later plays in `lab.yml` connect directly from the controller to each VM: `unifi`, `rhel-setup`, `ol-setup`, `ubuntu-setup`, plus `node-exporter`.
+
+The `virtualization` role runs first in the lab play. It installs libvirt and Terraform (from the HashiCorp repo) and generates lab's SSH key, which `rhel-vms` and `ubuntu-vms` depend on. This differs from the switch: `terraform/switch/` is plain Terraform that you run from the controller.
 
 ## RHEL/OL VMs
 
