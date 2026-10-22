@@ -53,13 +53,10 @@
     group: "{{ ansible_user }}"
     mode: '0644'
     content: |
+      # Plain HTTP is proxied too (not redirected to HTTPS) for clients
+      # that can't use the HTTPS endpoint.
       server {
           listen 80;
-          server_name {{ jellyfin_domain }};
-          return 301 https://$host$request_uri;
-      }
-
-      server {
           listen 443 ssl;
           server_name {{ jellyfin_domain }};
 
@@ -89,6 +86,7 @@
               proxy_buffering off;
           }
       }
+  register: r_nginx_conf
 
 - name: Set SELinux file context policy for nginx config
   community.general.sefcontext:
@@ -244,7 +242,7 @@
   ansible.builtin.systemd:
     name: jellyfin
     state: restarted
-  when: r_compose.changed
+  when: r_compose.changed or r_nginx_conf.changed
 
 # ── Image updates ─────────────────────────────────────────────────────────────
 
