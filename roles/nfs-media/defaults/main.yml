@@ -18,3 +18,10 @@ nfs_mounts:
     path: /media/shows
   - src: "{{ nfs_server }}:/mnt/tank/media/home-movies"
     path: /media/home-movies
+  # Media acquired from the internet, kept apart from the ripped library above.
+  # Flat /media/torrent-* paths (not /media/torrent/*) so no intermediate
+  # directory needs its own SELinux label for the jellyfin container.
+  - src: "{{ nfs_server }}:/mnt/tank/torrent/movies"
+    path: /media/torrent-movies
+  - src: "{{ nfs_server }}:/mnt/tank/torrent/shows"
+    path: /media/torrent-shows
