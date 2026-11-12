@@ -12,6 +12,7 @@
   register: _installed
   failed_when: false
   changed_when: false
+  check_mode: false  # read-only; the install condition below needs its output
 
 - name: Install node_exporter
   when: _installed.rc != 0 or node_exporter_version not in (_installed.stdout + _installed.stderr)
@@ -22,13 +23,17 @@
         dest: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ _arch }}.tar.gz"
         mode: '0644'
 
+    # In check mode the download above doesn't write the tarball, so the
+    # remaining steps can't run; the download reporting "changed" is the signal.
     - name: Extract node_exporter
+      when: not ansible_check_mode
       ansible.builtin.unarchive:
         src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ _arch }}.tar.gz"
         dest: /tmp/
         remote_src: true
 
     - name: Install node_exporter binary
+      when: not ansible_check_mode
       ansible.builtin.copy:
         src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-{{ _arch }}/node_exporter"
         dest: /usr/local/bin/node_exporter
