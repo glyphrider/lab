@@ -11,7 +11,7 @@ where they can reach workstations and lab services:
 
 | Device | MAC | IP (2026-11-12) | On marisol since |
 |---|---|---|---|
-| Samsung Frame TV (via Sunroom AP) | c0:23:8d:58:a8:86 | 10.47.2.66 | 2026-05-28 |
+| ~~Samsung Frame TV (via Sunroom AP)~~ **moved to IoT 2026-11-12, now 10.47.3.32 (see note)** | c0:23:8d:58:a8:86 | ~~10.47.2.66~~ | 2026-05-28 |
 | Echo (was 10.47.3.27) | 08:a6:bc:e1:ad:0e | 10.47.2.58 | 2026-05-08 |
 | Echo (was 10.47.3.31) | 48:78:5e:eb:61:e6 | 10.47.2.77 | 2026-05-26 |
 | Amazon device (likely Echo or Fire TV) | 34:25:be:4a:e7:7b | 10.47.2.38 | 2026-04-14 |
@@ -35,6 +35,14 @@ Background:
 - The two Echos switch between the IoT and main networks, probably because
   both Wi-Fi passwords are saved to the Amazon account ("Wi-Fi Simple
   Setup").
+- The Samsung Frame rejoined IoT without asking for the passphrase, so it
+  already had both networks saved and could fall back to marisol. To prevent
+  that, either make it forget marisol (look for "Forget" under Settings →
+  General → Network → Network Settings, or use Reset Network and rejoin only
+  IoT), or rely on the marisol password change in step 2 below.
+- After moving to IoT, check that the Frame's phone casting, SmartThings
+  control and art uploads still work. If not, item 3 is where to add a pf rule
+  allowing marisol to reach the TV.
 - Deleting a saved password from the Amazon account only stops Amazon from
   handing it out again. It doesn't disconnect anything, because each device
   keeps its own credentials, and it doesn't cover non-Amazon devices (WiZ,
@@ -77,6 +85,11 @@ can be enabled independently:
     crash telemetry.
   - `tag.tapad.com`: cross-device ad tracking that links the TV to other
     devices in the household. Seen from the Vizio at power-on on 2026-11-12.
+  - `samsungads.com`: Samsung Ads event logging
+    (`tvp-ads-log.samsungads.com`), the Frame TV's most frequent lookup. Gravity
+    already blocks `tvx.adgrx.com` (Samsung AdGear). Don't block
+    `samsungqbe.com` or `samsungcloudsolution.com`, which the TV's services
+    and apps use.
   - Gravity already blocks other Vizio ad and tracking domains:
     `vid-io-iad.springserve.com`, `ad.doubleclick.net`, `d.agkn.com`,
     `pi.ispot.tv` and `customerevents.netflix.com`.
