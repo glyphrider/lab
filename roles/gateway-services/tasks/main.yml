@@ -61,19 +61,33 @@
     marker: "# {mark} ANSIBLE MANAGED - switch syslog"
   notify: Restart syslogd
 
-# Blank the console after 5 minutes idle (value is in milliseconds; 0 disables).
-- name: Persist console blanking timeout
+# Blank the console after idle (screen_off is in milliseconds; 0 disables).
+# vblank=on asks inteldrm for a DPMS suspend rather than a normal blank.
+#
+# Monitor requirement: the attached MSI G242 must have OSD Setting > Auto Scan
+# OFF. With Auto Scan on, losing the DP signal makes the monitor re-scan inputs,
+# which the GPU sees as a hotplug; the fb console then re-lights the screen
+# while wscons still believes it is blanked, so it never blanks again until a
+# key is pressed.
+- name: Persist console blanking settings
   ansible.builtin.lineinfile:
     path: /etc/wsconsctl.conf
-    line: display.screen_off={{ gateway_console_blank_ms }}
-    regexp: '^display\.screen_off='
+    line: "{{ item.key }}={{ item.value }}"
+    regexp: '^{{ item.key | regex_escape }}='
     create: true
     owner: root
     group: wheel
     mode: '0644'
+  loop: "{{ _console_blank_settings | dict2items }}"
+  vars:
+    _console_blank_settings:
+      display.screen_off: "{{ gateway_console_blank_ms }}"
+      display.vblank: "on"
   register: gateway_console_blank
 
-- name: Apply console blanking timeout now
-  ansible.builtin.command: wsconsctl display.screen_off={{ gateway_console_blank_ms }}
-  when: gateway_console_blank.changed
+- name: Apply console blanking settings now
+  ansible.builtin.command: wsconsctl {{ item.item.key }}={{ item.item.value }}
+  loop: "{{ gateway_console_blank.results | selectattr('changed') | list }}"
+  loop_control:
+    label: "{{ item.item.key }}"
   changed_when: true
