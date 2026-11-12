@@ -43,6 +43,14 @@
     access_time: preserve
   notify: Restart syslogd
 
+# Rotate weekly (Sunday midnight) or at 1 MB, keeping 8 compressed archives.
+# newsyslog HUPs syslogd after rotating, so no restart command is needed.
+- name: Rotate switch log
+  ansible.builtin.lineinfile:
+    path: /etc/newsyslog.conf
+    line: "/var/log/switch.log\t\troot:wheel\t640  8     1000 $W0   Z"
+    regexp: '^/var/log/switch\.log\s'
+
 - name: Route switch logs to dedicated file
   ansible.builtin.blockinfile:
     path: /etc/syslog.conf
