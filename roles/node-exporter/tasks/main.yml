@@ -64,6 +64,13 @@
       WantedBy=multi-user.target
   notify: Restart node_exporter
 
+# ansible_facts['services'] is only populated by service_facts, not setup;
+# without this the firewalld check below is always false and the port is
+# never opened.
+- name: Gather service facts
+  ansible.builtin.service_facts:
+  when: ansible_facts['os_family'] == 'RedHat'
+
 - name: Open node_exporter port in firewalld
   ansible.posix.firewalld:
     port: 9100/tcp
