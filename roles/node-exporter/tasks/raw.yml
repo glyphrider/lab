@@ -1,0 +1,83 @@
+---
+# Raw-only equivalent of install.yml for hosts without a usable Python.
+# Each step echoes CHANGED when it modifies something.
+
+- name: Install node_exporter binary (raw)
+  ansible.builtin.raw: |
+    set -e
+    v={{ node_exporter_version }}
+    case "$(uname -m)" in aarch64) a=arm64 ;; *) a=amd64 ;; esac
+    if ! /usr/local/bin/node_exporter --version 2>&1 | grep -q "version $v "; then
+      d=$(mktemp -d)
+      url="https://github.com/prometheus/node_exporter/releases/download/v$v/node_exporter-$v.linux-$a.tar.gz"
+      if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$url" -o "$d/ne.tgz"
+      else
+        wget -qO "$d/ne.tgz" "$url"
+      fi
+      tar -xzf "$d/ne.tgz" -C "$d"
+      install -o root -g root -m 0755 "$d/node_exporter-$v.linux-$a/node_exporter" /usr/local/bin/node_exporter
+      rm -rf "$d"
+      echo CHANGED
+    fi
+  register: _ne_binary
+  changed_when: "'CHANGED' in _ne_binary.stdout"
+
+- name: Create node_exporter system user (raw)
+  ansible.builtin.raw: |
+    if ! id node_exporter >/dev/null 2>&1; then
+      useradd --system --no-create-home --shell /usr/sbin/nologin node_exporter
+      echo CHANGED
+    fi
+  register: _ne_user
+  changed_when: "'CHANGED' in _ne_user.stdout"
+
+- name: Deploy node_exporter systemd service (raw)
+  ansible.builtin.raw: |
+    unit=/etc/systemd/system/node_exporter.service
+    want='[Unit]
+    Description=Node Exporter
+    After=network.target
+
+    [Service]
+    User=node_exporter
+    ExecStart=/usr/local/bin/node_exporter
+    Restart=always
+    RestartSec=5
+
+    [Install]
+    WantedBy=multi-user.target'
+    if [ "$(cat "$unit" 2>/dev/null)" != "$want" ]; then
+      printf '%s\n' "$want" > "$unit"
+      systemctl daemon-reload
+      echo CHANGED
+    fi
+  register: _ne_unit
+  changed_when: "'CHANGED' in _ne_unit.stdout"
+
+- name: Open node_exporter port in ufw if active (raw)
+  ansible.builtin.raw: |
+    if command -v ufw >/dev/null 2>&1 && ufw status | grep -q '^Status: active' \
+       && ! ufw status | grep -q '^9100/tcp'; then
+      ufw allow 9100/tcp
+      echo CHANGED
+    fi
+  register: _ne_ufw
+  changed_when: "'CHANGED' in _ne_ufw.stdout"
+
+- name: Enable and start node_exporter (raw)
+  ansible.builtin.raw: |
+    set -e
+    if [ "$(systemctl is-enabled node_exporter 2>/dev/null)" != enabled ]; then
+      systemctl enable node_exporter
+      echo CHANGED
+    fi
+    if {{ (_ne_binary is changed or _ne_unit is changed) | ternary('true', 'false') }}; then
+      systemctl restart node_exporter
+      echo CHANGED
+    elif ! systemctl is-active --quiet node_exporter; then
+      systemctl start node_exporter
+      echo CHANGED
+    fi
+  register: _ne_service
+  changed_when: "'CHANGED' in _ne_service.stdout"

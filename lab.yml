@@ -72,3 +72,5 @@
   roles:
     - role: ubuntu-setup
       tags: ubuntu-setup
+    - role: node-exporter
+      tags: node-exporter

@@ -117,7 +117,7 @@ Each compose stack in `/var/lab/compose/` (pihole, unbound, monitoring, jellyfin
 
 ## Monitoring
 
-The `monitoring` role runs Grafana (192.168.1.7) and Prometheus (192.168.1.8) as containers on the lab host. The `node-exporter` role deploys the Prometheus node exporter on all managed Linux hosts (lab, unifi, rhel8, rhel9, ol9).
+The `monitoring` role runs Grafana (192.168.1.7) and Prometheus (192.168.1.8) as containers on the lab host. The `node-exporter` role deploys the Prometheus node exporter on all managed Linux hosts (lab, unifi, rhel8, rhel9, ol9, bionic, focal). bionic and focal use a raw-only install path (`node_exporter_use_raw`, set in `group_vars/ubuntu`) because their Python is too old for ansible-core modules.
 
 ## Gateway
 

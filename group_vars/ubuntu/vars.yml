@@ -1,2 +1,5 @@
 ---
 ansible_ssh_extra_args: '-o StrictHostKeyChecking=accept-new'
+
+# Python on bionic/focal is too old for module-based roles; see node-exporter/tasks/raw.yml
+node_exporter_use_raw: true

@@ -27,6 +27,14 @@ scrape_configs:
     static_configs:
       - targets: ['192.168.1.39:9100']
 
+  - job_name: node_bionic
+    static_configs:
+      - targets: ['192.168.1.41:9100']
+
+  - job_name: node_focal
+    static_configs:
+      - targets: ['192.168.1.42:9100']
+
   - job_name: pihole_lab
     static_configs:
       - targets: ['{{ pihole_exporter_ip }}:9617']
