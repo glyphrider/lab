@@ -17,3 +17,29 @@
   loop:
     - { src: _tmux.conf, dest: .tmux.conf }
     - { src: _vimrc,     dest: .vimrc     }
+
+# Rootless podman reads /etc/containers/storage.conf unless the user has their
+# own. The system file sets driver = "btrfs" for the rootful store on the btrfs
+# /var/lib/containers volume, but the rootless store lives under $HOME on XFS
+# and was created with overlay, so podman warns on every command. A user file
+# replaces the system one entirely for rootless podman (default graphroot
+# ~/.local/share/containers/storage still applies).
+- name: Create rootless podman config directory for {{ ansible_user }}
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  loop:
+    - .config
+    - .config/containers
+
+- name: Use overlay for {{ ansible_user }}'s rootless podman store
+  ansible.builtin.copy:
+    dest: "/home/{{ ansible_user }}/.config/containers/storage.conf"
+    content: |
+      [storage]
+      driver = "overlay"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
