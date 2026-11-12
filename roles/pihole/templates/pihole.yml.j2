@@ -38,6 +38,13 @@ services:
       - '{{ pihole_cert_dest }}:/etc/pihole/tls.pem'
 {% endif %}
       - '{{ instance.name }}-etc:/etc/pihole'
+{% if instance.mcs is defined %}
+    # Fixed MCS level so files written in the volume (gravity mv's blocklists
+    # in from /tmp, keeping the container's label) stay accessible after the
+    # container is recreated with a new random level.
+    security_opt:
+      - label=level:s0:{{ instance.mcs }}
+{% endif %}
     cap_add:
       - NET_ADMIN
       - SYS_TIME

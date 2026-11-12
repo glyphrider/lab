@@ -87,6 +87,26 @@
   delay: 2
   changed_when: false
 
+# ── SELinux volume labels ────────────────────────────────────────────────────
+# Each instance runs at a fixed MCS level (instance.mcs, see the compose
+# template). Before that, containers got a new random level on every
+# recreation, and files gravity mv'd into listsCache kept the old level and
+# became unreadable (chown/chmod "Permission denied" at startup). Reset any file
+# that is neither plain s0 nor the instance's own level. Podman's :z relabel
+# doesn't help — it skips the volume when the top-level directory is already s0.
+
+- name: Clear stale MCS categories from pihole volumes
+  ansible.builtin.shell: |
+    set -eu
+    m=$(podman volume inspect {{ item.name }}-etc --format '{{ '{{' }}.Mountpoint{{ '}}' }}')
+    find "$m" ! -context '*:s0' ! -context '*:s0:{{ item.mcs | default('') }}' -print -exec chcon -l s0 {} +
+  loop: "{{ pihole_instances }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: _mcs_reset
+  changed_when: _mcs_reset.stdout | length > 0
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
 # ── First-run password ────────────────────────────────────────────────────────
 
 - name: Check if pihole passwords have been initialized
