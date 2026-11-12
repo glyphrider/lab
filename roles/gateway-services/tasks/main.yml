@@ -30,6 +30,19 @@
     mode: '0644'
   notify: Restart syslogd
 
+# OpenBSD syslogd does not create missing log files; it silently skips the
+# action, so the file must exist before syslogd is (re)started.
+- name: Create switch log file
+  ansible.builtin.file:
+    path: /var/log/switch.log
+    state: touch
+    owner: root
+    group: wheel
+    mode: '0640'
+    modification_time: preserve
+    access_time: preserve
+  notify: Restart syslogd
+
 - name: Route switch logs to dedicated file
   ansible.builtin.blockinfile:
     path: /etc/syslog.conf
@@ -39,3 +52,20 @@
       +*
     marker: "# {mark} ANSIBLE MANAGED - switch syslog"
   notify: Restart syslogd
+
+# Blank the console after 5 minutes idle (value is in milliseconds; 0 disables).
+- name: Persist console blanking timeout
+  ansible.builtin.lineinfile:
+    path: /etc/wsconsctl.conf
+    line: display.screen_off={{ gateway_console_blank_ms }}
+    regexp: '^display\.screen_off='
+    create: true
+    owner: root
+    group: wheel
+    mode: '0644'
+  register: gateway_console_blank
+
+- name: Apply console blanking timeout now
+  ansible.builtin.command: wsconsctl display.screen_off={{ gateway_console_blank_ms }}
+  when: gateway_console_blank.changed
+  changed_when: true
