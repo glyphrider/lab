@@ -17,6 +17,20 @@
     upgrade: dist
     update_cache: true
 
+- name: Check if reboot is required
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: _reboot_required_file
+
+- name: Reboot if required
+  ansible.builtin.reboot:
+    msg: Rebooting after package updates
+    pre_reboot_delay: 5
+    post_reboot_delay: 30
+    connect_timeout: 10
+    reboot_timeout: 300
+  when: _reboot_required_file.stat.exists
+
 # ── Prerequisites & install ───────────────────────────────────────────────────
 
 - name: Install UniFi OS prerequisites
