@@ -52,28 +52,41 @@
 
 # ── Certificate ───────────────────────────────────────────────────────────────
 
+# Staged in a persistent directory (not /tmp) so a reboot doesn't make the
+# copy look changed and trigger a needless container restart.  Must be
+# readable by uosserver, since podman cp runs as that user.
+
+- name: Create certificate staging directory
+  ansible.builtin.file:
+    path: "{{ unifi_cert_dir }}"
+    state: directory
+    owner: uosserver
+    group: uosserver
+    mode: '0700'
+
 - name: Copy certificate files to VM
   ansible.builtin.copy:
     src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
+    dest: "{{ unifi_cert_dir }}/{{ item.dest }}"
     owner: uosserver
+    group: uosserver
     mode: "{{ item.mode }}"
   loop:
-    - { src: unifi.crt, dest: /tmp/unifi-core.crt, mode: '0644' }
-    - { src: unifi.key, dest: /tmp/unifi-core.key, mode: '0600' }
+    - { src: unifi.crt, dest: unifi-core.crt, mode: '0644' }
+    - { src: unifi.key, dest: unifi-core.key, mode: '0600' }
   register: _certs
 
 - name: Copy certificate into container
-  ansible.builtin.command: "sudo -u uosserver podman cp {{ item.src }} uosserver:{{ item.dest }}"
+  ansible.builtin.command: "sudo -u uosserver podman cp {{ unifi_cert_dir }}/{{ item }} uosserver:/data/unifi-core/config/{{ item }}"
   args:
-    chdir: /tmp
+    chdir: "{{ unifi_cert_dir }}"
   loop:
-    - { src: /tmp/unifi-core.crt, dest: /data/unifi-core/config/unifi-core.crt }
-    - { src: /tmp/unifi-core.key, dest: /data/unifi-core/config/unifi-core.key }
+    - unifi-core.crt
+    - unifi-core.key
   when: _certs.changed
 
 - name: Restart uosserver container
   ansible.builtin.command: sudo -u uosserver podman restart uosserver
   args:
-    chdir: /tmp
+    chdir: "{{ unifi_cert_dir }}"
   when: _certs.changed

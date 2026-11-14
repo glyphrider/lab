@@ -1,5 +1,6 @@
 ---
 unifi_os_installer: unifi-os-server.installer
+unifi_cert_dir: /home/uosserver/certs
 
 unifi_prerequisites:
   - podman
