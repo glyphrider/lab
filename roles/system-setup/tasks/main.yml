@@ -21,6 +21,38 @@
   notify: Update CA trust (Debian)
   when: ansible_facts['os_family'] == 'Debian'
 
+# ── Power-on after AC loss (Mac mini) ─────────────────────────────────────────
+# Clears AFTERG3_EN (bit 0 of GEN_PMCON_3 on the LPC bridge) so the machine
+# powers on when AC is restored. Reapplied at every boot because the value can
+# be lost after power events.
+
+- name: Deploy power-on-after-AC-loss service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/mac-power-on.service
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Power on after AC loss (Mac mini)
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/setpci -s 00:1f.0 0xa4.b=0
+
+      [Install]
+      WantedBy=multi-user.target
+  register: _mac_power_on_unit
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Enable and start power-on-after-AC-loss service
+  ansible.builtin.systemd:
+    name: mac-power-on.service
+    enabled: true
+    state: started
+    daemon_reload: "{{ _mac_power_on_unit is changed }}"
+  when: ansible_facts['os_family'] == 'RedHat'
+
 # ── Package updates ───────────────────────────────────────────────────────────
 
 - name: Update all packages (Red Hat)
