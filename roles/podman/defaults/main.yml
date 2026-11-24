@@ -1,0 +1,6 @@
+---
+# Compose bridge networks (com.docker.network.bridge.name) to place in the
+# firewalld containers zone: jellyfin-internal and monitoring-internal.
+podman_firewalld_bridges:
+  - jellyfin-br0
+  - monitoring-br0

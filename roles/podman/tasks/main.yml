@@ -26,9 +26,13 @@
   notify: Reload firewalld
   when: ansible_facts['os_family'] == 'RedHat'
 
-- name: Assign jellyfin bridge to containers zone
+# Netavark only trusts a bridge in firewalld at runtime, and a firewalld reload
+# discards that; without a permanent zone, the bridge then falls into the
+# default zone and containers can no longer reach aardvark-dns.
+- name: Assign container bridges to containers zone
   ansible.builtin.command: >
-    firewall-cmd --permanent --zone=containers --add-interface=jellyfin-br0
+    firewall-cmd --permanent --zone=containers --add-interface={{ item }}
+  loop: "{{ podman_firewalld_bridges }}"
   register: _iface
   changed_when: _iface.rc == 0
   failed_when: _iface.rc != 0 and 'ZONE_ALREADY_SET' not in _iface.stderr
