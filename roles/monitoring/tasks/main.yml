@@ -107,6 +107,87 @@
   changed_when: false
   when: ansible_facts['selinux']['status'] == 'enabled'
 
+# ── Grafana dashboards ─────────────────────────────────────────────────────────
+
+- name: Create Grafana dashboard directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+  loop:
+    - "{{ grafana_dashboards_provisioning_dir }}"
+    - "{{ grafana_dashboards_dir }}"
+
+- name: Deploy Grafana dashboard provider
+  ansible.builtin.template:
+    src: dashboards.yml.j2
+    dest: "{{ grafana_dashboards_provisioning_dir }}/lab.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  notify: Restart monitoring
+
+# Grafana rescans this directory on its own, so changed dashboards need no
+# restart.
+- name: Deploy Grafana dashboards
+  ansible.builtin.copy:
+    src: dashboards/
+    dest: "{{ grafana_dashboards_dir }}/"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Set SELinux file context for Grafana dashboards
+  community.general.sefcontext:
+    target: "{{ item }}(/.*)?"
+    setype: container_file_t
+    state: present
+  loop:
+    - "{{ grafana_dashboards_provisioning_dir }}"
+    - "{{ grafana_dashboards_dir }}"
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
+- name: Apply SELinux file context to Grafana dashboards
+  ansible.builtin.command: restorecon -Rv {{ item }}
+  changed_when: false
+  loop:
+    - "{{ grafana_dashboards_provisioning_dir }}"
+    - "{{ grafana_dashboards_dir }}"
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
+# ── Jellyfin exporter ──────────────────────────────────────────────────────────
+
+- name: Create Jellyfin exporter directory
+  ansible.builtin.file:
+    path: "{{ jellyfin_exporter_script | dirname }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Deploy Jellyfin exporter script
+  ansible.builtin.copy:
+    src: jellyfin_exporter.py
+    dest: "{{ jellyfin_exporter_script }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  notify: Restart monitoring
+
+- name: Set SELinux file context for Jellyfin exporter
+  community.general.sefcontext:
+    target: "{{ jellyfin_exporter_script | dirname }}(/.*)?"
+    setype: container_file_t
+    state: present
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
+- name: Apply SELinux file context to Jellyfin exporter
+  ansible.builtin.command: restorecon -Rv {{ jellyfin_exporter_script | dirname }}
+  changed_when: false
+  when: ansible_facts['selinux']['status'] == 'enabled'
+
 # ── Compose file ───────────────────────────────────────────────────────────────
 
 - name: Create compose directory
@@ -168,6 +249,7 @@
     podman images --quiet docker.io/prom/prometheus
     podman images --quiet docker.io/grafana/grafana
     podman images --quiet docker.io/ekofr/pihole-exporter
+    podman images --quiet docker.io/library/python:3-alpine
   register: _images_before
   changed_when: false
 
@@ -177,6 +259,7 @@
     - docker.io/prom/prometheus
     - docker.io/grafana/grafana
     - docker.io/ekofr/pihole-exporter
+    - docker.io/library/python:3-alpine
   changed_when: false
 
 - name: Record new image IDs
@@ -184,6 +267,7 @@
     podman images --quiet docker.io/prom/prometheus
     podman images --quiet docker.io/grafana/grafana
     podman images --quiet docker.io/ekofr/pihole-exporter
+    podman images --quiet docker.io/library/python:3-alpine
   register: _images_after
   changed_when: false
 

@@ -7,6 +7,7 @@ services:
     networks:
       lab-management0-macvlan:
         ipv4_address: {{ prometheus_ip }}
+      monitoring-internal:
     volumes:
       - '{{ prometheus_conf_dir }}/prometheus.yml:/etc/prometheus/prometheus.yml:ro'
       - 'prometheus-data:/prometheus'
@@ -39,6 +40,8 @@ services:
       - '{{ grafana_cert_dest }}:/etc/grafana/ssl/grafana.crt:ro'
       - '{{ grafana_key_dest }}:/etc/grafana/ssl/grafana.key:ro'
       - '{{ grafana_provisioning_dir }}:/etc/grafana/provisioning/datasources:ro'
+      - '{{ grafana_dashboards_provisioning_dir }}:/etc/grafana/provisioning/dashboards:ro'
+      - '{{ grafana_dashboards_dir }}:/etc/grafana/dashboards:ro'
       - 'grafana-data:/var/lib/grafana'
     cap_add:
       - NET_BIND_SERVICE
@@ -54,13 +57,26 @@ services:
     container_name: pihole-exporter
     image: docker.io/ekofr/pihole-exporter
     networks:
-      lab-management0-macvlan:
-        ipv4_address: {{ pihole_exporter_ip }}
+      - monitoring-internal
     environment:
       PIHOLE_HOSTNAME: '{{ pihole_management_ip }}'
       PIHOLE_PASSWORD: '{{ pihole_password }}'
       PIHOLE_PORT: '80'
       PORT: '9617'
+    restart: unless-stopped
+
+  jellyfin-exporter:
+    container_name: jellyfin-exporter
+    image: docker.io/library/python:3-alpine
+    networks:
+      - monitoring-internal
+    environment:
+      JELLYFIN_URL: '{{ jellyfin_exporter_target }}'
+      JELLYFIN_API_KEY: '{{ jellyfin_api_key }}'
+      PORT: '9711'
+    volumes:
+      - '{{ jellyfin_exporter_script }}:/jellyfin_exporter.py:ro'
+    command: ["python", "-u", "/jellyfin_exporter.py"]
     restart: unless-stopped
 
 volumes:
@@ -72,3 +88,14 @@ volumes:
 networks:
   lab-management0-macvlan:
     external: true
+  # Private network for the exporters: only Prometheus scrapes them, so they
+  # get no LAN address. Outbound traffic (to pihole, jellyfin) is NATed
+  # through the host.
+  monitoring-internal:
+    name: monitoring-internal
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: monitoring-br0
+    ipam:
+      config:
+        - subnet: {{ monitoring_internal_subnet }}

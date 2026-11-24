@@ -50,7 +50,7 @@ ansible-playbook gateway.yml --check
 ## Secrets
 
 Secrets are managed with ansible-vault. Encrypted files:
-- `group_vars/lab/vault.yml` — contains `pihole_password`, `vm_console_password`
+- `group_vars/lab/vault.yml` — contains `pihole_password`, `vm_console_password`, `grafana_admin_password`, `jellyfin_api_key`
 - `group_vars/rhel/vault.yml` — contains `rhsm_username`, `rhsm_password`
 - `group_vars/pi/vault.yml` — contains `pihole_password` for pihole2
 - `roles/pihole/files/pihole.key` — TLS private key for lab pihole

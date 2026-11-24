@@ -13,5 +13,18 @@ grafana_provisioning_dir: /var/lab/conf/grafana/provisioning/datasources
 prometheus_ip:       192.168.1.8
 prometheus_conf_dir: /var/lab/conf/prometheus
 
-pihole_exporter_ip:       192.168.1.9
+# Bridge network shared by Prometheus and the exporters (jellyfin-internal
+# uses 172.16.1.0/24).
+monitoring_internal_subnet: 172.16.2.0/24
+
 pihole_management_ip:     192.168.1.5
+
+grafana_dashboards_provisioning_dir: /var/lab/conf/grafana/provisioning/dashboards
+grafana_dashboards_dir:              /var/lab/conf/grafana/dashboards
+
+# Jellyfin library exporter. jellyfin_api_key lives in group_vars/lab/vault.yml
+# (create it in Jellyfin: Dashboard → API Keys).
+jellyfin_exporter_script: /var/lab/conf/jellyfin-exporter/jellyfin_exporter.py
+# Use the hostname, not the IP: nginx only proxies requests whose Host header
+# matches server_name; a bare-IP request hits its default site and 404s.
+jellyfin_exporter_target: http://jellyfin.marisol.home

@@ -42,7 +42,6 @@ unbound_views:
       - { name: jellyfin,   ip: 192.168.1.6,   mac: "02:42:c0:a8:01:06" }
       - { name: grafana,    ip: 192.168.1.7   }
       - { name: prometheus, ip: 192.168.1.8   }
-      - { name: proxmox,    ip: 192.168.1.9   } # mac pending; add to get a DHCP reservation
 
   - name: marisol
     clients:
@@ -52,7 +51,6 @@ unbound_views:
       - { name: pihole,   ip: 10.47.2.5,   mac: "dc:a6:32:69:66:ed" }
       - { name: jellyfin, ip: 10.47.2.6,   mac: "00:16:3E:91:31:07" }
       - { name: pihole2,  ip: 10.47.2.251 }
-      - { name: proxmox,  ip: 10.47.2.9   } # mac pending; add to get a DHCP reservation
       - { name: beast,    ip: 10.47.2.21,  mac: "00:d8:61:a6:97:16" }
       - { name: stealth,  ip: 10.47.2.22,  mac: "c8:ff:bf:0c:df:3d" }
       - { name: ender,    ip: 10.47.2.29, mac: "dc:a6:32:69:66:ee" }

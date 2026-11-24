@@ -119,6 +119,8 @@ Each compose stack in `/var/lab/compose/` (pihole, unbound, monitoring, jellyfin
 
 The `monitoring` role runs Grafana (192.168.1.7) and Prometheus (192.168.1.8) as containers on the lab host. The `node-exporter` role deploys the Prometheus node exporter on all managed Linux hosts (lab, unifi, rhel8, rhel9, ol9, bionic, focal). bionic and focal use a raw-only install path (`node_exporter_use_raw`, set in `group_vars/ubuntu`) because their Python is too old for ansible-core modules.
 
+The monitoring stack also runs `jellyfin-exporter`: a small stdlib-only Python script (`roles/monitoring/files/jellyfin_exporter.py`) in a `python:3-alpine` container. It queries the Jellyfin API through nginx at `http://jellyfin.marisol.home` (by name: a bare-IP request misses nginx's `server_name` and 404s) with `jellyfin_api_key`. For each movie and TV library it exports `jellyfin_library_items{library,type}` and `jellyfin_library_runtime_seconds{library,type}`, caching results for 5 minutes. Both exporters (`pihole-exporter`, `jellyfin-exporter`) sit only on the `monitoring-internal` bridge (172.16.2.0/24), which Prometheus also joins; Prometheus scrapes them by container name, and their outbound traffic is NATed through the host. Dashboards in `roles/monitoring/files/dashboards/` are file-provisioned into Grafana and read-only in the UI. To change one, edit the JSON in the repo.
+
 ## Gateway
 
 The `gateway-network` role syncs `/etc/hostname.*` files from `roles/gateway-network/files/` and reboots if anything changed. `become_method` is `doas` (not sudo) for the gateway — set in `group_vars/gateway/vars.yml`.
